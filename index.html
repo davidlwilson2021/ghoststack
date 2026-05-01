@@ -174,6 +174,7 @@
 
 <script>
   const PROXY = 'https://ghoststack-proxy.greyhawkdiesel.workers.dev';
+  const ANTHROPIC_KEY = 'ANTHROPIC_KEY_REDACTED_FROM_HISTORY';
   const LOG_CHANNEL = 'C0B0YHKH4QM';
   const DISPATCH_CHANNEL = 'C0B0LGLTLJK';
   let currentCat = 'tier2';
@@ -273,8 +274,13 @@
       if (!slackData.ok) throw new Error(slackData.error);
       const msgs = (slackData.messages || []).map(m => m.text).reverse();
       if (!msgs.length) throw new Error('No tasks logged today in #daily-work-log');
+
       btn.innerHTML = '<span class="spinner"></span> ASKING CLAUDE...';
-      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const dateStr = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
       const prompt = `You are a [redacted] assistant. Generate a Daily Work Call email in UNCLASSIFIED format.
 
 Today's date: ${dateStr}
@@ -294,17 +300,17 @@ This is my daily work call for ${dateStr}.
 ––––––––––––––––––––––––––––
 Objective 1 – Tier 2 Sys Admin
 ––––––––––––––––––––––––––––
-- [Tier 2 tasks or: AV operability checks ([redacted], Rowe Hall, Goddard, MI Library), device imaging support]
+- [Tier 2 tasks or recurring: AV operability checks ([redacted], Rowe Hall, Goddard, MI Library), device imaging support]
 
 ––––––––––––––––––––––––––––
 Objective 2 – Tech Requirements
 ––––––––––––––––––––––––––––
-- [Tech tasks or: [redacted] PTI searches, SCIF KVM procurement coordination]
+- [Tech tasks or recurring: [redacted] PTI searches, SCIF KVM procurement coordination]
 
 ––––––––––––––––––––––––––––
 Objective 3 – Cyber Security Governance
 ––––––––––––––––––––––––––––
-- [Cyber tasks or: [redacted] certificate monitoring, SIPR 10zig project coordination]
+- [Cyber tasks or recurring: [redacted] certificate monitoring, SIPR 10zig project coordination]
 
 ––––––––––––––––––––––––––––
 Objective 4 – Professional/Training
@@ -322,18 +328,24 @@ UNCLASSIFIED
 
 Return ONLY the formatted email, nothing else.`;
 
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      const claudeRes = await fetch(`${PROXY}/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({
+          apiKey: ANTHROPIC_KEY,
+          messages: [{ role: 'user', content: prompt }]
+        })
       });
+
       const claudeData = await claudeRes.json();
       generatedDraft = claudeData.content?.[0]?.text || '';
       if (!generatedDraft) throw new Error('Claude returned empty response');
+
       document.getElementById('output-box').textContent = generatedDraft;
       document.getElementById('gen-timestamp').textContent = `Generated at ${getTime()} — ready to post`;
       document.getElementById('output-panel').classList.add('visible');
       showToast('✓ DRAFT GENERATED');
+
     } catch (e) { showToast('✗ ERROR: ' + e.message, true); }
     btn.disabled = false;
     btn.textContent = '⚡ GENERATE DAILY WORK CALL';
