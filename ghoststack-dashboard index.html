@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhostStack Ops Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0c10; --surface: #0f1318; --border: #1a2030;
+    --accent: #00e5ff; --accent2: #7b2fff; --green: #00ff88;
+    --red: #ff3b5c; --text: #c8d8e8; --muted: #4a5a6a;
+    --mono: 'Share Tech Mono', monospace; --sans: 'Exo 2', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  .header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .logo { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+  .header-text h1 { font-family: var(--mono); font-size: 18px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .header-text p { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 1px; }
+  .status-dot { margin-left: auto; display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--green); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--green)}50%{opacity:.4;box-shadow:none} }
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 20px; }
+  .mode-btn { flex: 1; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .mode-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); box-shadow: 0 0 12px rgba(0,229,255,0.1); }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); }
+  .panel-header span { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+  .panel-header .ch { color: var(--muted); font-size: 10px; }
+  .proxy-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); border-radius: 4px; padding: 3px 8px; margin-left: auto; letter-spacing: 1px; }
+  .panel-body { padding: 16px; }
+  .cat-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .cat-btn { padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
+  .cat-btn[data-cat="tier2"].active { background: rgba(0,229,255,0.15); border-color: var(--accent); color: var(--accent); }
+  .cat-btn[data-cat="tech"].active { background: rgba(123,47,255,0.15); border-color: var(--accent2); color: var(--accent2); }
+  .cat-btn[data-cat="cyber"].active { background: rgba(255,59,92,0.15); border-color: var(--red); color: var(--red); }
+  .cat-btn[data-cat="training"].active { background: rgba(0,255,136,0.15); border-color: var(--green); color: var(--green); }
+  .task-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .task-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .task-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,229,255,0.1); }
+  .task-input::placeholder { color: var(--muted); }
+  .log-btn { padding: 10px 18px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border: none; border-radius: 6px; color: #fff; font-family: var(--mono); font-size: 12px; cursor: pointer; letter-spacing: 1px; transition: opacity 0.2s; white-space: nowrap; }
+  .log-btn:hover { opacity: 0.85; }
+  .log-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .task-feed { min-height: 80px; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 5px; border-left: 3px solid var(--border); font-size: 12px; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)} }
+  .task-item[data-cat="tier2"] { border-left-color: var(--accent); }
+  .task-item[data-cat="tech"] { border-left-color: var(--accent2); }
+  .task-item[data-cat="cyber"] { border-left-color: var(--red); }
+  .task-item[data-cat="training"] { border-left-color: var(--green); }
+  .task-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 1px; }
+  .task-text { color: var(--text); line-height: 1.4; flex: 1; }
+  .empty-state { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 24px; letter-spacing: 1px; }
+  .eod-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .eod-btn:hover { background: rgba(0,229,255,0.08); }
+  .eod-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .fetch-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
+  .fetch-btn:hover { border-color: var(--muted); color: var(--text); }
+  .output-panel { display: none; }
+  .output-panel.visible { display: block; }
+  .output-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.7; color: var(--text); white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+  .output-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .copy-btn, .post-btn { padding: 8px 14px; border-radius: 5px; font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+  .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .copy-btn:hover { border-color: var(--text); color: var(--text); }
+  .post-btn { background: rgba(0,255,136,0.1); border: 1px solid var(--green); color: var(--green); }
+  .post-btn:hover { background: rgba(0,255,136,0.2); }
+  .post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green); color: var(--green); padding: 10px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .timestamp { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">👻</div>
+    <div class="header-text">
+      <h1>GhostStack</h1>
+      <p>G6 OPS DISPATCH // DAILY WORK CALL SYSTEM</p>
+    </div>
+    <div class="status-dot"><div class="dot"></div>PROXY LIVE</div>
+  </div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('log')" id="mode-log">📡 LOG TASK</button>
+    <button class="mode-btn" onclick="setMode('eod')" id="mode-eod">📋 GENERATE EOD</button>
+    <button class="mode-btn" onclick="setMode('fetch')" id="mode-fetch">📥 FETCH LOG</button>
+  </div>
+
+  <!-- LOG MODE -->
+  <div id="view-log">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Task Logger</span><span class="ch">→ #daily-work-log</span>
+        <span class="proxy-badge">⚡ CF WORKER</span>
+      </div>
+      <div class="panel-body">
+        <div class="cat-row">
+          <button class="cat-btn active" data-cat="tier2" onclick="setCat('tier2')">TIER 2 SYS ADMIN</button>
+          <button class="cat-btn" data-cat="tech" onclick="setCat('tech')">TECH REQUIREMENTS</button>
+          <button class="cat-btn" data-cat="cyber" onclick="setCat('cyber')">CYBER GOVERNANCE</button>
+          <button class="cat-btn" data-cat="training" onclick="setCat('training')">TRAINING</button>
+        </div>
+        <div class="task-input-row">
+          <input class="task-input" id="task-input" placeholder="e.g. Imaged workstation, serial #..." onkeydown="if(event.key==='Enter') logTask()" />
+          <button class="log-btn" onclick="logTask()" id="log-btn">POST →</button>
+        </div>
+        <div class="divider"></div>
+        <div class="task-feed" id="task-feed">
+          <div class="empty-state">// NO TASKS LOGGED YET — START YOUR WORK CALL //</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EOD MODE -->
+  <div id="view-eod" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <span>EOD Generator</span><span class="ch">→ Claude → #claude-dispatch</span>
+        <span class="proxy-badge">⚡ CF WORKER</span>
+      </div>
+      <div class="panel-body">
+        <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6;">Fetches today's tasks from #daily-work-log → Claude formats your Daily Work Call → posts to #claude-dispatch.</p>
+        <button class="eod-btn" onclick="generateEOD()" id="eod-gen-btn">⚡ GENERATE DAILY WORK CALL</button>
+      </div>
+    </div>
+    <div class="panel output-panel" id="output-panel">
+      <div class="panel-header"><span>Generated Draft</span><span class="ch">→ ready to post</span></div>
+      <div class="panel-body">
+        <div class="output-box" id="output-box"></div>
+        <div class="output-actions">
+          <button class="copy-btn" onclick="copyOutput()">📋 COPY</button>
+          <button class="post-btn" onclick="postToSlack()" id="post-btn">✓ POST TO #claude-dispatch</button>
+        </div>
+        <div class="timestamp" id="gen-timestamp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FETCH MODE -->
+  <div id="view-fetch" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Channel Log</span><span class="ch">→ #daily-work-log</span>
+        <span class="proxy-badge">⚡ CF WORKER</span>
+      </div>
+      <div class="panel-body">
+        <button class="fetch-btn" onclick="fetchLog()">↓ PULL LATEST MESSAGES</button>
+        <div class="task-feed" id="fetch-feed">
+          <div class="empty-state">// PULL MESSAGES FROM SLACK //</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const PROXY = 'https://ghoststack-proxy.greyhawkdiesel.workers.dev';
+  const LOG_CHANNEL = 'C0B0YHKH4QM';
+  const DISPATCH_CHANNEL = 'C0B0LGLTLJK';
+  let currentCat = 'tier2';
+  let localTasks = [];
+  let generatedDraft = '';
+
+  const catLabels = {
+    tier2: 'Obj 1 – Tier 2 Sys Admin',
+    tech: 'Obj 2 – Tech Requirements',
+    cyber: 'Obj 3 – Cyber Security Governance',
+    training: 'Obj 4 – Professional/Training'
+  };
+
+  function setMode(mode) {
+    ['log','eod','fetch'].forEach(m => {
+      document.getElementById(`view-${m}`).style.display = m === mode ? 'block' : 'none';
+      document.getElementById(`mode-${m}`).classList.toggle('active', m === mode);
+    });
+  }
+
+  function setCat(cat) {
+    currentCat = cat;
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-cat="${cat}"]`).classList.add('active');
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function showToast(msg, error = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (error ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 2800);
+  }
+
+  async function logTask() {
+    const input = document.getElementById('task-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const btn = document.getElementById('log-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>POSTING';
+    try {
+      const res = await fetch(`${PROXY}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: LOG_CHANNEL, text: `[${catLabels[currentCat].toUpperCase()}] ${text}` })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      localTasks.push({ cat: currentCat, text, time: getTime() });
+      renderFeed();
+      input.value = '';
+      showToast('✓ TASK LOGGED TO SLACK');
+    } catch (e) { showToast('✗ POST FAILED: ' + e.message, true); }
+    btn.disabled = false;
+    btn.textContent = 'POST →';
+  }
+
+  function renderFeed() {
+    const feed = document.getElementById('task-feed');
+    if (!localTasks.length) { feed.innerHTML = '<div class="empty-state">// NO TASKS LOGGED YET //</div>'; return; }
+    feed.innerHTML = localTasks.slice().reverse().map(t =>
+      `<div class="task-item" data-cat="${t.cat}"><span class="task-time">${t.time}</span><span class="task-text">${t.text}</span></div>`
+    ).join('');
+  }
+
+  async function fetchLog() {
+    const feed = document.getElementById('fetch-feed');
+    feed.innerHTML = '<div class="empty-state"><span class="spinner"></span> FETCHING...</div>';
+    try {
+      const res = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&limit=30`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const msgs = data.messages || [];
+      if (!msgs.length) { feed.innerHTML = '<div class="empty-state">// NO MESSAGES FOUND //</div>'; return; }
+      feed.innerHTML = msgs.map(m => {
+        const t = new Date(parseFloat(m.ts) * 1000);
+        const time = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        let cat = m.text.includes('TECH') ? 'tech' : m.text.includes('CYBER') ? 'cyber' : m.text.includes('TRAINING') ? 'training' : 'tier2';
+        return `<div class="task-item" data-cat="${cat}"><span class="task-time">${time}</span><span class="task-text">${m.text}</span></div>`;
+      }).join('');
+    } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">✗ ${e.message}</div>`; }
+  }
+
+  async function generateEOD() {
+    const btn = document.getElementById('eod-gen-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> FETCHING TASKS...';
+    try {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const oldest = Math.floor(today.getTime() / 1000);
+      const slackRes = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&oldest=${oldest}&limit=50`);
+      const slackData = await slackRes.json();
+      if (!slackData.ok) throw new Error(slackData.error);
+      const msgs = (slackData.messages || []).map(m => m.text).reverse();
+      if (!msgs.length) throw new Error('No tasks logged today in #daily-work-log');
+      btn.innerHTML = '<span class="spinner"></span> ASKING CLAUDE...';
+      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const prompt = `You are a [redacted] assistant. Generate a Daily Work Call email in UNCLASSIFIED format.
+
+Today's date: ${dateStr}
+Tasks logged today:
+${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}
+
+Format EXACTLY as:
+
+UNCLASSIFIED
+
+SUBJECT: Daily Work Summary - [redacted] - UNCLASSIFIED - [UNCLASSIFIED]
+
+Good morning/afternoon,
+
+This is my daily work call for ${dateStr}.
+
+––––––––––––––––––––––––––––
+Objective 1 – Tier 2 Sys Admin
+––––––––––––––––––––––––––––
+- [Tier 2 tasks or: AV operability checks ([redacted], Rowe Hall, Goddard, MI Library), device imaging support]
+
+––––––––––––––––––––––––––––
+Objective 2 – Tech Requirements
+––––––––––––––––––––––––––––
+- [Tech tasks or: [redacted] PTI searches, SCIF KVM procurement coordination]
+
+––––––––––––––––––––––––––––
+Objective 3 – Cyber Security Governance
+––––––––––––––––––––––––––––
+- [Cyber tasks or: [redacted] certificate monitoring, SIPR 10zig project coordination]
+
+––––––––––––––––––––––––––––
+Objective 4 – Professional/Training
+––––––––––––––––––––––––––––
+- [Training tasks. Always include: Continued [redacted] at [redacted]]
+
+V/R,
+David Wilson
+[redacted]
+[redacted] | [redacted]
+[redacted]
+[redacted]
+
+UNCLASSIFIED
+
+Return ONLY the formatted email, nothing else.`;
+
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      });
+      const claudeData = await claudeRes.json();
+      generatedDraft = claudeData.content?.[0]?.text || '';
+      if (!generatedDraft) throw new Error('Claude returned empty response');
+      document.getElementById('output-box').textContent = generatedDraft;
+      document.getElementById('gen-timestamp').textContent = `Generated at ${getTime()} — ready to post`;
+      document.getElementById('output-panel').classList.add('visible');
+      showToast('✓ DRAFT GENERATED');
+    } catch (e) { showToast('✗ ERROR: ' + e.message, true); }
+    btn.disabled = false;
+    btn.textContent = '⚡ GENERATE DAILY WORK CALL';
+  }
+
+  async function postToSlack() {
+    if (!generatedDraft) return;
+    const btn = document.getElementById('post-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> POSTING...';
+    try {
+      const res = await fetch(`${PROXY}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: DISPATCH_CHANNEL, text: generatedDraft })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      showToast('✓ POSTED TO #claude-dispatch');
+    } catch (e) { showToast('✗ POST FAILED: ' + e.message, true); }
+    btn.disabled = false;
+    btn.textContent = '✓ POST TO #claude-dispatch';
+  }
+
+  function copyOutput() {
+    navigator.clipboard.writeText(generatedDraft).then(() => showToast('✓ COPIED TO CLIPBOARD'));
+  }
+</script>
+</body>
+</html>
