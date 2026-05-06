@@ -173,8 +173,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // ----------------------------------------------------------------
+  // No API key here. The Worker holds the Anthropic key as a Secret
+  // and adds it to the upstream request server-side.
+  // ----------------------------------------------------------------
   const PROXY = 'https://ghoststack-proxy.greyhawkdiesel.workers.dev';
-  const ANTHROPIC_KEY = 'ANTHROPIC_KEY_REDACTED_FROM_HISTORY';
   const LOG_CHANNEL = 'C0B0YHKH4QM';
   const DISPATCH_CHANNEL = 'C0B0LGLTLJK';
   let currentCat = 'tier2';
@@ -328,11 +331,11 @@ UNCLASSIFIED
 
 Return ONLY the formatted email, nothing else.`;
 
+      // NOTE: no apiKey field anymore — the Worker injects the key server-side.
       const claudeRes = await fetch(`${PROXY}/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          apiKey: ANTHROPIC_KEY,
           messages: [{ role: 'user', content: prompt }]
         })
       });
