@@ -1,8 +1,8 @@
 # 👻 GhostStack
 ### G6 Ops Dashboard — Daily Work Call Automation System
 
-> Built by David Wilson | [redacted] | [redacted] | [redacted]  
-> Stack: Slack API · Cloudflare Workers · Cloudflare Pages · GitHub · Claude AI
+> Built by David Wilson  
+> 
 
 ---
 
