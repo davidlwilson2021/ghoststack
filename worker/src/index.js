@@ -53,6 +53,7 @@ async function getSession(db, request) {
 }
 
 async function seedAdmin(db, env) {
+  if (!env.ADMIN_EMAIL) return;
   const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(env.ADMIN_EMAIL).first();
   if (existing) return;
   const salt = env.ADMIN_EMAIL + ':ghoststack';
