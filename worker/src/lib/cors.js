@@ -5,7 +5,7 @@ export function corsHeaders(request) {
   const allowedOrigin = (origin === ALLOWED_ORIGIN || origin.endsWith('.ghoststack.pages.dev')) ? origin : ALLOWED_ORIGIN;
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
   };
