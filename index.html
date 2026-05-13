@@ -406,9 +406,21 @@
         <div id="settings-msg" class="settings-msg"></div>
 
         <section class="settings-section">
-          <h3>Claude API Key</h3>
-          <p class="settings-hint">Required for generating End-of-Day summaries. Your key is encrypted before storage and never returned to the browser. Get a key at console.anthropic.com.</p>
-          <div id="anthropic-key-row"></div>
+          <h3>AI Provider</h3>
+          <p class="settings-hint">Choose the AI service that will generate your End-of-Day summaries. Your API key is encrypted before storage and never returned to the browser.</p>
+          <div class="settings-row">
+            <label>Provider</label>
+            <select id="ai-provider" onchange="onProviderChange()"></select>
+          </div>
+          <div class="settings-row">
+            <label>Model</label>
+            <select id="ai-model"></select>
+          </div>
+          <div class="settings-row">
+            <label id="ai-key-label">API Key</label>
+            <div id="ai-key-row"></div>
+            <div class="settings-hint" id="ai-key-hint" style="margin-top:6px"></div>
+          </div>
         </section>
 
         <section class="settings-section">
@@ -941,8 +953,14 @@
 
   // ── SETTINGS ──
   let currentSettings = null;
-  let anthropicKeyReplaceMode = false;
+  let providerInfo = [];
+  let aiKeyReplaceMode = false;
   let slackTokenReplaceMode = false;
+
+  const KEY_HINTS = {
+    anthropic: { placeholder: 'sk-ant-...', help: 'Get a key at console.anthropic.com' },
+    openai: { placeholder: 'sk-...', help: 'Get a key at platform.openai.com/api-keys' },
+  };
 
   function openSettings() {
     document.getElementById('user-menu').classList.remove('visible');
@@ -951,7 +969,7 @@
     document.getElementById('settings-content').style.display = 'none';
     document.getElementById('settings-msg').className = 'settings-msg';
     document.getElementById('settings-msg').textContent = '';
-    anthropicKeyReplaceMode = false;
+    aiKeyReplaceMode = false;
     slackTokenReplaceMode = false;
     loadSettings();
   }
@@ -966,6 +984,7 @@
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       currentSettings = data.settings;
+      providerInfo = data.providers || [];
       renderSettings();
       document.getElementById('settings-loading').style.display = 'none';
       document.getElementById('settings-content').style.display = 'block';
@@ -974,9 +993,91 @@
     }
   }
 
+  function renderProviderSelect() {
+    const sel = document.getElementById('ai-provider');
+    sel.innerHTML = providerInfo.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
+    sel.value = currentSettings.ai_provider || (providerInfo[0]?.id ?? 'anthropic');
+  }
+
+  function renderModelSelect() {
+    const providerId = document.getElementById('ai-provider').value;
+    const provider = providerInfo.find(p => p.id === providerId);
+    const sel = document.getElementById('ai-model');
+    if (!provider) { sel.innerHTML = ''; return; }
+    sel.innerHTML = provider.models.map(m => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+    const desired = currentSettings.ai_model;
+    const known = provider.models.some(m => m.id === desired);
+    sel.value = known ? desired : provider.default_model;
+  }
+
+  function renderKeyHint() {
+    const providerId = document.getElementById('ai-provider').value;
+    const hint = KEY_HINTS[providerId] || { placeholder: 'API key', help: '' };
+    const labelEl = document.getElementById('ai-key-label');
+    const hintEl = document.getElementById('ai-key-hint');
+    const providerLabel = providerInfo.find(p => p.id === providerId)?.label || 'AI';
+    labelEl.textContent = `${providerLabel} API Key`;
+    hintEl.textContent = hint.help;
+    return hint;
+  }
+
+  function onProviderChange() {
+    // When the user picks a different provider mid-form, reset the model
+    // to that provider's default and require fresh key entry.
+    aiKeyReplaceMode = currentSettings.has_ai_key ? true : false;
+    renderModelSelect();
+    renderKeyHint();
+    renderAiKeyRow();
+  }
+
+  function renderAiKeyRow() {
+    const hint = renderKeyHint();
+    const container = document.getElementById('ai-key-row');
+    const hasKey = currentSettings.has_ai_key && !aiKeyReplaceMode &&
+                   currentSettings.ai_provider === document.getElementById('ai-provider').value;
+    if (hasKey) {
+      container.innerHTML = `
+        <div class="key-status">
+          <span class="badge set">SET</span>
+          <span style="color:var(--muted)">API key is configured</span>
+          <span class="actions">
+            <button type="button" class="replace" onclick="enableReplaceAi()">Replace</button>
+            <button type="button" class="clear" onclick="clearAiKey()">Clear</button>
+          </span>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `<input type="password" id="ai-key-input" placeholder="${esc(hint.placeholder)}" autocomplete="off" />`;
+    }
+  }
+
+  function enableReplaceAi() {
+    aiKeyReplaceMode = true;
+    renderAiKeyRow();
+  }
+
+  async function clearAiKey() {
+    try {
+      const res = await fetch(`${PROXY}/settings`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ ai_key: '' })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      currentSettings = data.settings;
+      aiKeyReplaceMode = false;
+      renderAiKeyRow();
+      showSettingsMsg('API key cleared', 'success');
+    } catch (e) {
+      showSettingsMsg(e.message, 'error');
+    }
+  }
+
   function renderSettings() {
     const s = currentSettings;
-    renderKeyRow('anthropic', s.has_anthropic_key, anthropicKeyReplaceMode);
+    renderProviderSelect();
+    renderModelSelect();
+    renderAiKeyRow();
     renderKeyRow('slack', s.has_slack_token, slackTokenReplaceMode);
     document.getElementById('slack-log-channel').value = s.slack_log_channel || '';
     document.getElementById('slack-dispatch-channel').value = s.slack_dispatch_channel || '';
@@ -990,54 +1091,47 @@
     renderRecipients(s.default_recipients && s.default_recipients.length ? s.default_recipients : [currentUser.email]);
   }
 
+  // Slack bot token row (the AI key has its own dedicated renderer above).
   function renderKeyRow(kind, hasKey, replaceMode) {
-    const containerId = kind === 'anthropic' ? 'anthropic-key-row' : 'slack-token-row';
-    const inputId = kind === 'anthropic' ? 'anthropic-key-input' : 'slack-token-input';
-    const placeholder = kind === 'anthropic' ? 'sk-ant-...' : 'xoxb-...';
-    const container = document.getElementById(containerId);
+    const container = document.getElementById('slack-token-row');
     if (hasKey && !replaceMode) {
       container.innerHTML = `
         <div class="key-status">
           <span class="badge set">SET</span>
-          <span style="color:var(--muted)">${kind === 'anthropic' ? 'Claude key' : 'Slack bot token'} is configured</span>
+          <span style="color:var(--muted)">Slack bot token is configured</span>
           <span class="actions">
-            <button type="button" class="replace" onclick="enableReplace('${kind}')">Replace</button>
-            <button type="button" class="clear" onclick="clearKey('${kind}')">Clear</button>
+            <button type="button" class="replace" onclick="enableReplaceSlack()">Replace</button>
+            <button type="button" class="clear" onclick="clearSlackToken()">Clear</button>
           </span>
         </div>
       `;
     } else if (hasKey && replaceMode) {
       container.innerHTML = `
-        <input type="password" id="${inputId}" placeholder="${placeholder} (enter new value)" autocomplete="off" />
-        <div class="settings-hint" style="margin-top:6px">Saving will replace the existing key.</div>
+        <input type="password" id="slack-token-input" placeholder="xoxb-... (enter new value)" autocomplete="off" />
+        <div class="settings-hint" style="margin-top:6px">Saving will replace the existing token.</div>
       `;
     } else {
-      container.innerHTML = `
-        <input type="password" id="${inputId}" placeholder="${placeholder}" autocomplete="off" />
-      `;
+      container.innerHTML = `<input type="password" id="slack-token-input" placeholder="xoxb-..." autocomplete="off" />`;
     }
   }
 
-  function enableReplace(kind) {
-    if (kind === 'anthropic') anthropicKeyReplaceMode = true;
-    else slackTokenReplaceMode = true;
-    renderKeyRow(kind, true, true);
+  function enableReplaceSlack() {
+    slackTokenReplaceMode = true;
+    renderKeyRow('slack', true, true);
   }
 
-  async function clearKey(kind) {
-    const field = kind === 'anthropic' ? 'anthropic_key' : 'slack_bot_token';
+  async function clearSlackToken() {
     try {
       const res = await fetch(`${PROXY}/settings`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ [field]: '' })
+        body: JSON.stringify({ slack_bot_token: '' })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       currentSettings = data.settings;
-      if (kind === 'anthropic') anthropicKeyReplaceMode = false;
-      else slackTokenReplaceMode = false;
+      slackTokenReplaceMode = false;
       renderSettings();
-      showSettingsMsg(`${kind === 'anthropic' ? 'Claude key' : 'Slack token'} cleared`, 'success');
+      showSettingsMsg('Slack token cleared', 'success');
     } catch (e) {
       showSettingsMsg(e.message, 'error');
     }
@@ -1089,7 +1183,12 @@
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> SAVING';
     showSettingsMsg('', '');
 
+    const providerEl = document.getElementById('ai-provider');
+    const modelEl = document.getElementById('ai-model');
+
     const payload = {
+      ai_provider: providerEl.value,
+      ai_model: modelEl.value,
       slack_log_channel: document.getElementById('slack-log-channel').value.trim() || null,
       slack_dispatch_channel: document.getElementById('slack-dispatch-channel').value.trim() || null,
       email_template: {
@@ -1103,13 +1202,16 @@
       schedule_timezone: document.getElementById('schedule-timezone').value.trim() || null,
     };
 
-    // Only include key fields if the user actually typed something (replace mode
-    // or fresh entry). An empty field when the key was already set means "no change".
-    const akInput = document.getElementById('anthropic-key-input');
+    // Only include key fields if the user actually typed something (replace
+    // mode or fresh entry). An empty field when the key was already set
+    // for the SAME provider means "no change". Switching providers clears
+    // the old key implicitly.
+    const akInput = document.getElementById('ai-key-input');
     if (akInput) {
       const v = akInput.value;
-      if (v) payload.anthropic_key = v;
-      else if (!currentSettings.has_anthropic_key) payload.anthropic_key = '';
+      const providerChanged = providerEl.value !== currentSettings.ai_provider;
+      if (v) payload.ai_key = v;
+      else if (!currentSettings.has_ai_key || providerChanged) payload.ai_key = '';
     }
     const stInput = document.getElementById('slack-token-input');
     if (stInput) {
@@ -1126,7 +1228,8 @@
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       currentSettings = data.settings;
-      anthropicKeyReplaceMode = false;
+      providerInfo = data.providers || providerInfo;
+      aiKeyReplaceMode = false;
       slackTokenReplaceMode = false;
       renderSettings();
       showSettingsMsg('Settings saved', 'success');

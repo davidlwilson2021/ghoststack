@@ -1,6 +1,7 @@
 // Per-user settings. Stores:
 //
-//   - Encrypted Anthropic API key (for the user's own Claude calls)
+//   - Chosen AI provider (anthropic/openai) and model id
+//   - Encrypted AI API key for that provider
 //   - Optional encrypted Slack bot token + channel IDs
 //   - Custom EOD email template
 //   - Default email recipients
@@ -8,17 +9,19 @@
 //
 // Encrypted columns store AES-GCM ciphertext + IV (see lib/crypto.js).
 // The plaintext is decrypted only inside the Worker at use time. The
-// frontend never receives the plaintext — GET returns has_anthropic_key
-// booleans instead.
+// frontend never receives the plaintext — GET returns has_ai_key as
+// a boolean instead.
 
 import { json, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
 import { encrypt } from '../lib/crypto.js';
 import { isValidEmail } from '../lib/validate.js';
+import { isValidProvider, getProviderInfo } from '../lib/ai/index.js';
 
 const SLACK_CHANNEL_RE = /^[A-Z0-9]{1,20}$/;
 const SCHEDULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TIMEZONE_RE = /^[A-Za-z_/+\-0-9]{1,80}$/;
+const MODEL_RE = /^[A-Za-z0-9._\-]{1,80}$/;
 const TEMPLATE_FIELDS = ['subject', 'body_intro', 'body_signature'];
 const MAX_TEMPLATE_FIELD = 5000;
 const MAX_KEY_LENGTH = 500;
@@ -31,7 +34,9 @@ function parseJsonField(value, fallback) {
 
 function sanitizeView(row) {
   return {
-    has_anthropic_key: !!(row && row.anthropic_key_encrypted),
+    ai_provider: row?.ai_provider || 'anthropic',
+    ai_model: row?.ai_model || null,
+    has_ai_key: !!(row && row.ai_key_encrypted),
     has_slack_token: !!(row && row.slack_bot_token_encrypted),
     slack_log_channel: row?.slack_log_channel ?? null,
     slack_dispatch_channel: row?.slack_dispatch_channel ?? null,
@@ -52,7 +57,11 @@ export async function getSettings(request, env) {
     'SELECT * FROM user_settings WHERE user_id = ?'
   ).bind(session.user_id).first();
 
-  return json({ ok: true, settings: sanitizeView(row) }, 200, request);
+  return json({
+    ok: true,
+    settings: sanitizeView(row),
+    providers: getProviderInfo(),
+  }, 200, request);
 }
 
 export async function updateSettings(request, env) {
@@ -75,17 +84,36 @@ export async function updateSettings(request, env) {
 
   const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
 
+  // --- AI provider and model ---
+  if (has('ai_provider')) {
+    const p = body.ai_provider;
+    if (typeof p !== 'string' || !isValidProvider(p)) {
+      return err('Invalid ai_provider', 400, request);
+    }
+    sets.push('ai_provider = ?');
+    params.push(p);
+  }
+
+  if (has('ai_model')) {
+    const m = body.ai_model;
+    if (typeof m !== 'string' || !MODEL_RE.test(m)) {
+      return err('Invalid ai_model', 400, request);
+    }
+    sets.push('ai_model = ?');
+    params.push(m);
+  }
+
   // --- encrypted credential fields ---
-  if (has('anthropic_key')) {
-    const k = body.anthropic_key;
+  if (has('ai_key')) {
+    const k = body.ai_key;
     if (k === null || k === '') {
-      sets.push('anthropic_key_encrypted = NULL', 'anthropic_key_iv = NULL');
+      sets.push('ai_key_encrypted = NULL', 'ai_key_iv = NULL');
     } else {
       if (typeof k !== 'string' || k.length > MAX_KEY_LENGTH) {
-        return err('Invalid anthropic_key', 400, request);
+        return err('Invalid ai_key', 400, request);
       }
       const { ciphertext, iv } = await encrypt(k, env.MASTER_KEY);
-      sets.push('anthropic_key_encrypted = ?', 'anthropic_key_iv = ?');
+      sets.push('ai_key_encrypted = ?', 'ai_key_iv = ?');
       params.push(ciphertext, iv);
     }
   }
@@ -211,12 +239,12 @@ export async function updateSettings(request, env) {
   params.push(session.user_id);
   await env.DB.prepare(sql).bind(...params).run();
 
-  // Recompute setup_complete: requires an Anthropic key and at least
-  // one default recipient. Lets the frontend gate features on this flag.
+  // Recompute setup_complete: requires an AI key and at least one
+  // default recipient. Lets the frontend gate features on this flag.
   const after = await env.DB.prepare(
-    'SELECT anthropic_key_encrypted, default_recipients, setup_complete FROM user_settings WHERE user_id = ?'
+    'SELECT ai_key_encrypted, default_recipients, setup_complete FROM user_settings WHERE user_id = ?'
   ).bind(session.user_id).first();
-  const hasKey = !!after.anthropic_key_encrypted;
+  const hasKey = !!after.ai_key_encrypted;
   const recipients = parseJsonField(after.default_recipients, []);
   const complete = hasKey && recipients.length > 0 ? 1 : 0;
   if (after.setup_complete !== complete) {
@@ -229,5 +257,10 @@ export async function updateSettings(request, env) {
     'SELECT * FROM user_settings WHERE user_id = ?'
   ).bind(session.user_id).first();
 
-  return json({ ok: true, settings: sanitizeView(final) }, 200, request);
+  return json({
+    ok: true,
+    settings: sanitizeView(final),
+    providers: getProviderInfo(),
+  }, 200, request);
 }
+
