@@ -307,7 +307,7 @@
     <div id="view-log">
       <div class="panel">
         <div class="panel-header">
-          <span>Task Logger</span><span class="ch">→ #daily-work-log</span>
+          <span>Task Logger</span><span class="ch">→ D1</span>
           <span class="proxy-badge">CF WORKER</span>
         </div>
         <div class="panel-body">
@@ -333,16 +333,16 @@
     <div id="view-eod" style="display:none">
       <div class="panel">
         <div class="panel-header">
-          <span>EOD Generator</span><span class="ch">→ Claude → #claude-dispatch</span>
+          <span>EOD Generator</span><span class="ch">→ AI → Email</span>
           <span class="proxy-badge">CF WORKER</span>
         </div>
         <div class="panel-body">
-          <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6;">Fetches today's tasks from #daily-work-log → Claude formats your Daily Work Call → posts to #claude-dispatch.</p>
+          <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6;">Pulls today's tasks from your log, formats them using your configured AI provider, and prepares an email draft ready to send.</p>
           <button class="eod-btn" onclick="generateEOD()" id="eod-gen-btn">GENERATE DAILY WORK CALL</button>
         </div>
       </div>
       <div class="panel output-panel" id="output-panel">
-        <div class="panel-header"><span>Generated Draft</span><span class="ch">→ ready to post</span></div>
+        <div class="panel-header"><span>Generated Draft</span><span class="ch">→ ready to send</span></div>
         <div class="panel-body">
           <div class="output-box" id="output-box"></div>
           <div class="output-actions">
@@ -358,13 +358,13 @@
     <div id="view-fetch" style="display:none">
       <div class="panel">
         <div class="panel-header">
-          <span>Channel Log</span><span class="ch">→ #daily-work-log</span>
+          <span>Recent Tasks</span><span class="ch">→ D1</span>
           <span class="proxy-badge">CF WORKER</span>
         </div>
         <div class="panel-body">
-          <button class="fetch-btn" onclick="fetchLog()">PULL LATEST MESSAGES</button>
+          <button class="fetch-btn" onclick="fetchLog()">PULL RECENT TASKS</button>
           <div class="task-feed" id="fetch-feed">
-            <div class="empty-state">// PULL MESSAGES FROM SLACK //</div>
+            <div class="empty-state">// PULL RECENT TASKS //</div>
           </div>
         </div>
       </div>
