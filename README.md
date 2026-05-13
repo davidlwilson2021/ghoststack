@@ -6,6 +6,23 @@ A secure, auth-gated operations dashboard for automating Daily Work Call emails.
 
 ---
 
+## Recent Updates
+
+**Secure Authentication System** — The dashboard is now fully locked behind a login screen. No features are accessible without signing in. Key additions:
+
+- Sign In / Request Access screen with tabbed UI
+- PBKDF2 password hashing (100k iterations, SHA-256) — passwords are never stored in plaintext
+- 256-bit cryptographically random session tokens with 7-day automatic expiry
+- Admin approval workflow — new users register and wait for admin to approve before gaining access
+- Admin panel for managing users (approve, deny, revoke, delete)
+- Change Password option accessible from the user menu
+- All API keys moved to Cloudflare Worker encrypted secrets — nothing sensitive in the codebase
+- CORS locked to the production domain only
+- XSS protection on all rendered content
+- SQL injection protection via parameterized D1 queries
+
+---
+
 ## Architecture
 
 ```
