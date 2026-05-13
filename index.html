@@ -266,7 +266,7 @@
             <button class="cat-btn" data-cat="training" onclick="setCat('training')">TRAINING</button>
           </div>
           <div class="task-input-row">
-            <input class="task-input" id="task-input" placeholder="e.g. Imaged workstation, serial #..." onkeydown="if(event.key==='Enter') logTask()" />
+            <input class="task-input" id="task-input" placeholder="e.g. Imaged new workstation, resolved ticket..." onkeydown="if(event.key==='Enter') logTask()" />
             <button class="log-btn" onclick="logTask()" id="log-btn">POST</button>
           </div>
           <div class="divider"></div>
@@ -637,7 +637,7 @@
       if (!msgs.length) throw new Error('No tasks logged today in #daily-work-log');
       btn.innerHTML = '<span class="spinner"></span> ASKING CLAUDE...';
       const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const prompt = `You are a [redacted] assistant. Generate a Daily Work Call email in UNCLASSIFIED format.\n\nToday's date: ${dateStr}\nTasks logged today:\n${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}\n\nFormat EXACTLY as:\n\nUNCLASSIFIED\n\nSUBJECT: Daily Work Summary - [redacted] - UNCLASSIFIED - [UNCLASSIFIED]\n\nGood morning/afternoon,\n\nThis is my daily work call for ${dateStr}.\n\n––––––––––––––––––––––––––––\nObjective 1 – Tier 2 Sys Admin\n––––––––––––––––––––––––––––\n- [Tier 2 tasks]\n\n––––––––––––––––––––––––––––\nObjective 2 – Tech Requirements\n––––––––––––––––––––––––––––\n- [Tech tasks]\n\n––––––––––––––––––––––––––––\nObjective 3 – Cyber Security Governance\n––––––––––––––––––––––––––––\n- [Cyber tasks]\n\n––––––––––––––––––––––––––––\nObjective 4 – Professional/Training\n––––––––––––––––––––––––––––\n- [Training tasks. Always include: Continued [redacted] at [redacted]]\n\nV/R,\nDavid Wilson\n[redacted]\n[redacted] | [redacted]\n[redacted]\n[redacted]\n\nUNCLASSIFIED\n\nReturn ONLY the formatted email, nothing else.`;
+      const prompt = `You are an assistant that writes professional End-of-Day status emails for IT operations staff. Generate a clear, properly formatted daily summary email from the logged tasks.\n\nToday's date: ${dateStr}\nTasks logged today:\n${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}\n\nFormat as:\n\nSUBJECT: Daily Work Summary - ${currentUser.displayName} - ${dateStr}\n\nGood morning/afternoon,\n\nThis is my daily summary for ${dateStr}.\n\n––––––––––––––––––––––––––––\nTier 2 Sys Admin\n––––––––––––––––––––––––––––\n- [Tier 2 tasks]\n\n––––––––––––––––––––––––––––\nTech Requirements\n––––––––––––––––––––––––––––\n- [Tech tasks]\n\n––––––––––––––––––––––––––––\nCyber Security Governance\n––––––––––––––––––––––––––––\n- [Cyber tasks]\n\n––––––––––––––––––––––––––––\nProfessional / Training\n––––––––––––––––––––––––––––\n- [Training tasks]\n\nOnly include sections that have relevant tasks. End with:\n\nV/R,\n${currentUser.displayName}\n\nReturn ONLY the formatted email, nothing else.`;
       const claudeRes = await fetch(`${PROXY}/claude`, {
         method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
