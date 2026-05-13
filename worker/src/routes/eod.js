@@ -9,6 +9,10 @@ import { json, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
 import { decrypt } from '../lib/crypto.js';
 import { generate } from '../lib/ai/index.js';
+import { sendEmail } from '../lib/email/resend.js';
+import { isValidEmail } from '../lib/validate.js';
+
+const MAX_RECIPIENTS = 20;
 
 // Display labels for the original four G6 category keys used by the
 // dashboard. Unknown categories pass through unchanged so users with
@@ -169,4 +173,93 @@ export async function generateEod(request, env) {
     tasks_count: tasks.length,
     generated_at: new Date().toISOString(),
   }, 200, request);
+}
+
+// Splits a generated draft into { subject, body } by looking for the
+// "SUBJECT: ..." marker on its own line. If the marker is missing,
+// the caller's draft is used as the body and the subject is empty.
+function extractSubject(draft) {
+  const match = draft.match(/^\s*SUBJECT:\s*(.+?)\s*$/m);
+  if (!match) return { subject: '', body: draft };
+  const subject = match[1].trim();
+  const body = draft.slice(match.index + match[0].length).replace(/^\s*\n+/, '');
+  return { subject, body };
+}
+
+export async function sendEod(request, env) {
+  const session = await getSession(env.DB, request);
+  if (!session) return err('Not authenticated', 401, request);
+
+  if (!env.RESEND_API_KEY) {
+    return err('Email delivery is not configured on this server. Set RESEND_API_KEY.', 500, request);
+  }
+  const fromAddress = env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+  let body;
+  try { body = await request.json(); } catch { body = null; }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return err('Request body must be a JSON object', 400, request);
+  }
+
+  const draft = typeof body.draft === 'string' ? body.draft.trim() : '';
+  const recipients = body.recipients;
+  if (!draft) return err('draft is required', 400, request);
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    return err('recipients must be a non-empty array', 400, request);
+  }
+  if (recipients.length > MAX_RECIPIENTS) {
+    return err(`Too many recipients (max ${MAX_RECIPIENTS})`, 400, request);
+  }
+  for (const r of recipients) {
+    if (!isValidEmail(r)) return err(`Invalid recipient: ${r}`, 400, request);
+  }
+
+  // Determine subject + body content from the draft itself (preferred)
+  // or from explicit fields supplied by the client.
+  const extracted = extractSubject(draft);
+  const subject = (typeof body.subject === 'string' && body.subject.trim())
+    || extracted.subject
+    || `Daily Summary - ${session.display_name}`;
+  const emailBody = extracted.body || draft;
+
+  // Record the attempt as pending up front so a Resend failure still
+  // leaves a row in eod_history for the admin Monitor view.
+  const inserted = await env.DB.prepare(
+    `INSERT INTO eod_history (user_id, subject, body, recipients, status)
+     VALUES (?, ?, ?, ?, 'pending') RETURNING id`
+  ).bind(
+    session.user_id,
+    subject,
+    draft,
+    JSON.stringify(recipients)
+  ).first();
+  const historyId = inserted.id;
+
+  try {
+    const result = await sendEmail({
+      apiKey: env.RESEND_API_KEY,
+      from: fromAddress,
+      to: recipients,
+      subject,
+      text: emailBody,
+      replyTo: session.email,
+    });
+    await env.DB.prepare(
+      `UPDATE eod_history SET status='sent', sent_at=datetime('now') WHERE id=?`
+    ).bind(historyId).run();
+    return json({
+      ok: true,
+      message: 'EOD sent',
+      history_id: historyId,
+      message_id: result.id,
+      from: fromAddress,
+      to: recipients,
+      subject,
+    }, 200, request);
+  } catch (e) {
+    await env.DB.prepare(
+      `UPDATE eod_history SET status='failed', error_message=? WHERE id=?`
+    ).bind(e.message, historyId).run();
+    return err(`Failed to send: ${e.message}`, 502, request);
+  }
 }

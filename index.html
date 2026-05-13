@@ -347,7 +347,7 @@
           <div class="output-box" id="output-box"></div>
           <div class="output-actions">
             <button class="copy-btn" onclick="copyOutput()">COPY</button>
-            <button class="post-btn" onclick="postToSlack()" id="post-btn">POST TO #claude-dispatch</button>
+            <button class="post-btn" onclick="openSendModal()" id="send-btn">SEND EMAIL</button>
           </div>
           <div class="timestamp" id="gen-timestamp"></div>
         </div>
@@ -485,6 +485,35 @@
     <div class="settings-foot">
       <button class="cancel" onclick="closeSettings()">Cancel</button>
       <button class="save" id="settings-save-btn" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════ SEND EMAIL MODAL ════════════════════════════════════ -->
+<div class="settings-modal" id="send-modal" style="display:none;" onclick="if(event.target===this)closeSendModal()">
+  <div class="settings-card" style="max-width:520px;">
+    <div class="settings-head">
+      <h2>Send EOD Email</h2>
+      <button onclick="closeSendModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div id="send-msg" class="settings-msg"></div>
+      <section class="settings-section">
+        <div class="settings-row">
+          <label>Subject</label>
+          <input type="text" id="send-subject" />
+        </div>
+        <div class="settings-row">
+          <label>Recipients</label>
+          <p class="settings-hint" style="margin-bottom:8px;">Pre-filled from your default recipients. You can edit per send.</p>
+          <div id="send-recipients-list"></div>
+          <button type="button" class="add-recipient-btn" onclick="addSendRecipientRow('')">+ Add recipient</button>
+        </div>
+      </section>
+    </div>
+    <div class="settings-foot">
+      <button class="cancel" onclick="closeSendModal()">Cancel</button>
+      <button class="save" id="send-confirm-btn" onclick="confirmSend()">Send</button>
     </div>
   </div>
 </div>
@@ -848,20 +877,96 @@
     btn.disabled = false; btn.textContent = 'GENERATE DAILY WORK CALL';
   }
 
-  async function postToSlack() {
+  // ── SEND EOD VIA EMAIL ──
+  // Opens a modal pre-filled with the user's default recipients and the
+  // subject extracted from the generated draft. User can edit either,
+  // then confirm to POST /eod/send. The server handles Resend dispatch
+  // and writes to eod_history for the admin Monitor view.
+  function extractSubjectFromDraft(draft) {
+    const m = draft.match(/^\s*SUBJECT:\s*(.+?)\s*$/m);
+    return m ? m[1].trim() : '';
+  }
+
+  function addSendRecipientRow(value) {
+    const wrap = document.getElementById('send-recipients-list');
+    const row = document.createElement('div');
+    row.className = 'recipient-row';
+    const input = document.createElement('input');
+    input.type = 'email';
+    input.placeholder = 'name@example.com';
+    input.value = value || '';
+    input.autocomplete = 'off';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.title = 'Remove';
+    btn.onclick = () => row.remove();
+    row.appendChild(input);
+    row.appendChild(btn);
+    wrap.appendChild(row);
+  }
+
+  function showSendMsg(text, kind) {
+    const el = document.getElementById('send-msg');
+    el.textContent = text;
+    el.className = 'settings-msg ' + (kind || '');
+  }
+
+  function collectSendRecipients() {
+    const out = [];
+    document.querySelectorAll('#send-recipients-list input').forEach(i => {
+      const v = i.value.trim();
+      if (v) out.push(v);
+    });
+    return out;
+  }
+
+  async function openSendModal() {
     if (!generatedDraft) return;
-    const btn = document.getElementById('post-btn');
-    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> POSTING...';
+    document.getElementById('send-modal').style.display = 'flex';
+    showSendMsg('', '');
+    document.getElementById('send-subject').value =
+      extractSubjectFromDraft(generatedDraft) || `Daily Summary - ${currentUser.displayName}`;
+    document.getElementById('send-recipients-list').innerHTML = '';
+    // Pull latest default recipients from settings.
+    let defaults = [currentUser.email];
     try {
-      const res = await fetch(`${PROXY}/log`, {
+      const res = await fetch(`${PROXY}/settings`, { headers: authHeaders() });
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.settings.default_recipients) && data.settings.default_recipients.length) {
+        defaults = data.settings.default_recipients;
+      }
+    } catch (_) {}
+    defaults.forEach(addSendRecipientRow);
+  }
+
+  function closeSendModal() {
+    document.getElementById('send-modal').style.display = 'none';
+  }
+
+  async function confirmSend() {
+    const subject = document.getElementById('send-subject').value.trim();
+    const recipients = collectSendRecipients();
+    if (!subject) { showSendMsg('Subject is required', 'error'); return; }
+    if (recipients.length === 0) { showSendMsg('At least one recipient is required', 'error'); return; }
+
+    const btn = document.getElementById('send-confirm-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> SENDING';
+    showSendMsg('', '');
+    try {
+      const res = await fetch(`${PROXY}/eod/send`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ channel: DISPATCH_CHANNEL, text: generatedDraft })
+        body: JSON.stringify({ draft: generatedDraft, subject, recipients }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      showToast('POSTED TO #claude-dispatch');
-    } catch (e) { showToast('POST FAILED: ' + e.message, true); }
-    btn.disabled = false; btn.textContent = 'POST TO #claude-dispatch';
+      showSendMsg(`Sent to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}`, 'success');
+      showToast('EMAIL SENT');
+      setTimeout(closeSendModal, 1200);
+    } catch (e) {
+      showSendMsg(e.message, 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Send';
   }
 
   function copyOutput() {
