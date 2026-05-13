@@ -106,6 +106,9 @@
   @keyframes slideIn { from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)} }
   .task-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 1px; }
   .task-text { color: var(--text); line-height: 1.4; flex: 1; }
+  .task-del { background: none; border: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; opacity: 0.4; transition: all 0.15s; }
+  .task-item:hover .task-del { opacity: 1; }
+  .task-del:hover { color: var(--red); }
   .empty-state { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 24px; letter-spacing: 1px; }
   .eod-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
   .eod-btn:hover { background: var(--accent-dim); }
@@ -678,6 +681,8 @@
       toggle.appendChild(btn);
       loadPendingCount();
     }
+
+    loadTodaysTasks();
   }
 
   // ── USER MENU ──
@@ -709,6 +714,10 @@
   }
 
   // ── TASK LOGGING ──
+  // Primary storage is D1 via /tasks. While the EOD generator still reads
+  // Slack history (replaced in step 6), we also fire-and-forget /log so
+  // today's tasks are visible to the legacy reader. Once /eod reads from
+  // D1, the /log mirror can be removed.
   async function logTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
@@ -716,26 +725,76 @@
     const btn = document.getElementById('log-btn');
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
     try {
-      const res = await fetch(`${PROXY}/log`, {
+      const res = await fetch(`${PROXY}/tasks`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ channel: LOG_CHANNEL, text: `[${catLabels[currentCat].toUpperCase()}] ${text}` })
+        body: JSON.stringify({ category: currentCat, text })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      localTasks.push({ cat: currentCat, text, time: getTime() });
+      localTasks.unshift(data.task);
       renderFeed();
       input.value = '';
-      showToast('TASK LOGGED TO SLACK');
+      showToast('TASK LOGGED');
+
+      // Best-effort Slack mirror for backward compatibility with the
+      // current EOD generator. Failures are logged but don't surface.
+      const mirrorText = `[${catLabels[currentCat].toUpperCase()}] ${text}`;
+      fetch(`${PROXY}/log`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ channel: LOG_CHANNEL, text: mirrorText }),
+      }).catch(e => console.warn('Slack mirror failed:', e));
     } catch (e) { showToast('POST FAILED: ' + e.message, true); }
     btn.disabled = false; btn.textContent = 'POST';
+  }
+
+  function formatTaskTime(isoString) {
+    // D1 returns "YYYY-MM-DD HH:MM:SS" in UTC. Convert to local time.
+    const utcString = isoString.includes('T') ? isoString : isoString.replace(' ', 'T') + 'Z';
+    return new Date(utcString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   function renderFeed() {
     const feed = document.getElementById('task-feed');
     if (!localTasks.length) { feed.innerHTML = '<div class="empty-state">// NO TASKS LOGGED YET //</div>'; return; }
-    feed.innerHTML = localTasks.slice().reverse().map(t =>
-      `<div class="task-item"><span class="task-time">${esc(t.time)}</span><span class="task-text">${esc(t.text)}</span></div>`
+    feed.innerHTML = localTasks.map(t =>
+      `<div class="task-item">
+        <span class="task-time">${esc(formatTaskTime(t.created_at))}</span>
+        <span class="task-text">${esc(t.text)}</span>
+        <button class="task-del" onclick="deleteTask(${parseInt(t.id, 10)})" title="Delete">&times;</button>
+      </div>`
     ).join('');
+  }
+
+  async function deleteTask(id) {
+    try {
+      const res = await fetch(`${PROXY}/tasks/${id}`, { method: 'DELETE', headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      localTasks = localTasks.filter(t => t.id !== id);
+      renderFeed();
+      // also refresh the fetch-log view if visible
+      const fetchFeed = document.getElementById('fetch-feed');
+      if (fetchFeed && document.getElementById('view-fetch').style.display !== 'none') fetchLog();
+      showToast('TASK DELETED');
+    } catch (e) { showToast('DELETE FAILED: ' + e.message, true); }
+  }
+
+  // Today (local) at 00:00:00 in UTC ISO, used as the lower bound when
+  // loading today's tasks into the LOG TASK feed on app entry.
+  function todayStartISO() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+
+  async function loadTodaysTasks() {
+    try {
+      const res = await fetch(`${PROXY}/tasks?from=${encodeURIComponent(todayStartISO())}&limit=500`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      localTasks = data.tasks || [];
+      renderFeed();
+    } catch (e) { console.warn('Failed to load today\'s tasks:', e); }
   }
 
   // ── FETCH LOG ──
@@ -743,15 +802,18 @@
     const feed = document.getElementById('fetch-feed');
     feed.innerHTML = '<div class="empty-state"><span class="spinner"></span> FETCHING...</div>';
     try {
-      const res = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&limit=30`, { headers: authHeaders() });
+      const res = await fetch(`${PROXY}/tasks?limit=50`, { headers: authHeaders() });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      const msgs = data.messages || [];
-      if (!msgs.length) { feed.innerHTML = '<div class="empty-state">// NO MESSAGES FOUND //</div>'; return; }
-      feed.innerHTML = msgs.map(m => {
-        const t = new Date(parseFloat(m.ts) * 1000);
-        const time = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        return `<div class="task-item"><span class="task-time">${esc(time)}</span><span class="task-text">${esc(m.text)}</span></div>`;
+      const list = data.tasks || [];
+      if (!list.length) { feed.innerHTML = '<div class="empty-state">// NO TASKS YET //</div>'; return; }
+      feed.innerHTML = list.map(t => {
+        const time = formatTaskTime(t.created_at);
+        return `<div class="task-item">
+          <span class="task-time">${esc(time)}</span>
+          <span class="task-text">${esc(t.text)}</span>
+          <button class="task-del" onclick="deleteTask(${parseInt(t.id, 10)})" title="Delete">&times;</button>
+        </div>`;
       }).join('');
     } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}</div>`; }
   }

@@ -10,6 +10,7 @@ import { seedAdmin } from './lib/seed.js';
 import * as auth from './routes/auth.js';
 import * as admin from './routes/admin.js';
 import * as settings from './routes/settings.js';
+import * as tasks from './routes/tasks.js';
 import * as proxy from './routes/proxy.js';
 
 export default {
@@ -40,6 +41,12 @@ export default {
     // ── Settings routes (Phase 2) ──
     if (path === '/settings' && method === 'GET') return settings.getSettings(request, env);
     if (path === '/settings' && method === 'POST') return settings.updateSettings(request, env);
+
+    // ── Tasks routes (Phase 2) ──
+    if (path === '/tasks' && method === 'POST') return tasks.createTask(request, env);
+    if (path === '/tasks' && method === 'GET') return tasks.listTasks(request, env);
+    const taskIdMatch = path.match(/^\/tasks\/(\d+)$/);
+    if (taskIdMatch && method === 'DELETE') return tasks.deleteTask(request, env, parseInt(taskIdMatch[1], 10));
 
     // ── Phase 1 legacy proxy routes (kept for backward compatibility) ──
     if (path === '/log' && method === 'POST') return proxy.logToSlack(request, env);
