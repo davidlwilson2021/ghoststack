@@ -9,8 +9,10 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
     --bg: #0A0A0A; --surface: #111111; --surface2: #1A1A1A; --border: #2A2A2A;
-    --accent: #C9A96E; --accent-dim: rgba(201,169,110,0.15);
-    --red: #ff3b5c; --text: #F5F5F5; --muted: #999999;
+    --accent: #C9A96E; --accent-dim: rgba(201,169,110,0.15); --accent-hover: rgba(201,169,110,0.25);
+    --red: #D94452; --red-dim: rgba(217,68,82,0.15);
+    --green: #4CAF50; --green-dim: rgba(76,175,80,0.15);
+    --text: #F5F5F5; --muted: #999999;
     --mono: 'Share Tech Mono', monospace; --sans: 'Exo 2', sans-serif;
   }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
@@ -19,41 +21,70 @@
     background-image: linear-gradient(rgba(201,169,110,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(201,169,110,0.02) 1px, transparent 1px);
     background-size: 40px 40px; pointer-events: none; z-index: 0;
   }
-  .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ── AUTH SCREEN ── */
+  #auth-screen { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; }
+  .auth-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+  .auth-logo-icon { width: 48px; height: 48px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 24px rgba(201,169,110,0.2); }
+  .auth-logo h1 { font-family: var(--mono); font-size: 20px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .auth-logo p { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 1px; }
+  .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .auth-tab { flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 11px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
+  .form-input::placeholder { color: #555; }
+  .form-hint { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 4px; }
+  .auth-btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 6px; color: var(--bg); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: opacity 0.2s; margin-top: 8px; }
+  .auth-btn:hover { opacity: 0.85; }
+  .auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .auth-error { background: var(--red-dim); border: 1px solid var(--red); border-radius: 6px; padding: 10px 14px; color: var(--red); font-family: var(--mono); font-size: 11px; margin-bottom: 14px; display: none; }
+  .auth-success { background: var(--green-dim); border: 1px solid var(--green); border-radius: 6px; padding: 10px 14px; color: var(--green); font-family: var(--mono); font-size: 11px; margin-bottom: 14px; display: none; }
+  .auth-footer { text-align: center; margin-top: 20px; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .auth-footer span { color: var(--accent); }
+  .pw-requirements { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 4px; padding-left: 2px; }
+  .pw-requirements li { list-style: none; padding: 1px 0; }
+  .pw-requirements li::before { content: '○ '; color: var(--border); }
+  .pw-requirements li.met { color: var(--green); }
+  .pw-requirements li.met::before { content: '● '; color: var(--green); }
+
+  /* ── APP SHELL ── */
+  #app-screen { display: none; position: relative; z-index: 1; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
   .header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
   .logo { width: 42px; height: 42px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 20px rgba(201,169,110,0.2); }
   .header-text h1 { font-family: var(--mono); font-size: 18px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
   .header-text p { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 1px; }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
   .status-dot { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--accent)}50%{opacity:.4;box-shadow:none} }
-  .sign-in-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--accent); border-radius: 5px; color: var(--accent); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-  .sign-in-btn:hover { background: var(--accent-dim); }
-  .user-info { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
-  .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--accent); }
-  .sign-out-btn { padding: 4px 10px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-family: var(--mono); font-size: 9px; cursor: pointer; transition: all 0.2s; }
-  .sign-out-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
-  .modal-overlay.visible { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; }
-  .modal h2 { font-family: var(--mono); font-size: 16px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
-  .modal p { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-  .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; margin-bottom: 10px; transition: border-color 0.2s; }
-  .modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
-  .modal-input::placeholder { color: var(--muted); }
-  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
-  .modal-primary { flex: 1; padding: 10px; background: var(--accent); border: none; border-radius: 6px; color: var(--bg); font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: opacity 0.2s; }
-  .modal-primary:hover { opacity: 0.85; }
-  .modal-cancel { padding: 10px 16px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
-  .modal-cancel:hover { border-color: var(--accent); color: var(--text); }
-  .modal-divider { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 10px; margin: 14px 0; position: relative; }
-  .modal-divider::before, .modal-divider::after { content:''; position: absolute; top: 50%; width: 38%; height: 1px; background: var(--border); }
-  .modal-divider::before { left: 0; }
-  .modal-divider::after { right: 0; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px 4px 4px; cursor: pointer; transition: border-color 0.2s; position: relative; }
+  .user-pill:hover { border-color: var(--accent); }
+  .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: var(--mono); color: var(--accent); font-weight: 700; }
+  .user-name { font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .user-role-badge { font-family: var(--mono); font-size: 8px; color: var(--accent); background: var(--accent-dim); border-radius: 3px; padding: 1px 5px; letter-spacing: 1px; text-transform: uppercase; }
+  .user-menu { display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; min-width: 180px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .user-menu.visible { display: block; }
+  .user-menu-item { display: block; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--text); font-family: var(--mono); font-size: 11px; text-align: left; cursor: pointer; transition: background 0.15s; }
+  .user-menu-item:hover { background: var(--surface2); }
+  .user-menu-item.danger { color: var(--red); }
+  .user-menu-sep { height: 1px; background: var(--border); }
+
+  /* ── MODE TABS ── */
   .mode-toggle { display: flex; gap: 8px; margin-bottom: 20px; }
   .mode-btn { flex: 1; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
   .mode-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 12px rgba(201,169,110,0.1); }
+  .mode-btn.admin-tab { color: var(--muted); }
+  .mode-btn.admin-tab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .pending-count { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; border-radius: 8px; background: var(--red); color: #fff; font-size: 9px; font-family: var(--mono); margin-left: 4px; padding: 0 4px; }
+
+  /* ── PANELS ── */
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
   .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
   .panel-header span { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
@@ -66,17 +97,13 @@
   .task-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .task-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
   .task-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
-  .task-input::placeholder { color: var(--muted); }
+  .task-input::placeholder { color: #555; }
   .log-btn { padding: 10px 18px; background: var(--accent); border: none; border-radius: 6px; color: var(--bg); font-family: var(--mono); font-size: 12px; font-weight: 600; cursor: pointer; letter-spacing: 1px; transition: opacity 0.2s; white-space: nowrap; }
   .log-btn:hover { opacity: 0.85; }
   .log-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .task-feed { min-height: 80px; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-  .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 5px; border-left: 3px solid var(--border); font-size: 12px; animation: slideIn 0.2s ease; }
+  .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 5px; border-left: 3px solid var(--accent); font-size: 12px; animation: slideIn 0.2s ease; }
   @keyframes slideIn { from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)} }
-  .task-item[data-cat="tier2"] { border-left-color: var(--accent); }
-  .task-item[data-cat="tech"] { border-left-color: var(--accent); }
-  .task-item[data-cat="cyber"] { border-left-color: var(--accent); }
-  .task-item[data-cat="training"] { border-left-color: var(--accent); }
   .task-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 1px; }
   .task-text { color: var(--text); line-height: 1.4; flex: 1; }
   .empty-state { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 24px; letter-spacing: 1px; }
@@ -93,103 +120,219 @@
   .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
   .post-btn { background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); }
-  .post-btn:hover { background: rgba(201,169,110,0.25); }
+  .post-btn:hover { background: var(--accent-hover); }
   .post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── ADMIN PANEL ── */
+  .admin-user-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg); border-radius: 6px; margin-bottom: 6px; }
+  .admin-user-info { flex: 1; }
+  .admin-user-email { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .admin-user-name { font-size: 11px; color: var(--muted); }
+  .admin-user-date { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .admin-status { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+  .admin-status.pending { color: #F5A623; background: rgba(245,166,35,0.15); }
+  .admin-status.approved { color: var(--green); background: var(--green-dim); }
+  .admin-status.denied { color: var(--red); background: var(--red-dim); }
+  .admin-actions { display: flex; gap: 6px; }
+  .admin-action-btn { padding: 5px 10px; border-radius: 4px; font-family: var(--mono); font-size: 9px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
+  .admin-action-btn.approve { background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  .admin-action-btn.approve:hover { background: rgba(76,175,80,0.25); }
+  .admin-action-btn.deny { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+  .admin-action-btn.deny:hover { background: rgba(217,68,82,0.25); }
+  .admin-action-btn.delete { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .admin-action-btn.delete:hover { border-color: var(--red); color: var(--red); }
+  .admin-filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .admin-filter-btn { padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
+  .admin-filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  /* ── TOAST ── */
   .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); padding: 10px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.error { border-color: var(--red); color: var(--red); }
   .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to{transform:rotate(360deg)} }
+  .spinner-lg { width: 24px; height: 24px; border-width: 3px; margin: 0 auto; display: block; }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   .divider { height: 1px; background: var(--border); margin: 14px 0; }
   .timestamp { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; margin-top: 8px; }
+  .lock-icon { font-size: 14px; margin-right: 4px; }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="logo">👻</div>
-    <div class="header-text">
-      <h1>GhostStack</h1>
-      <p>G6 OPS DISPATCH // DAILY WORK CALL SYSTEM</p>
-    </div>
-    <div class="header-right">
-      <div class="status-dot"><div class="dot"></div>PROXY LIVE</div>
-      <div id="auth-area">
-        <button class="sign-in-btn" onclick="openSignIn()">SIGN IN</button>
-      </div>
-    </div>
-  </div>
 
-  <div class="mode-toggle">
-    <button class="mode-btn active" onclick="setMode('log')" id="mode-log">📡 LOG TASK</button>
-    <button class="mode-btn" onclick="setMode('eod')" id="mode-eod">📋 GENERATE EOD</button>
-    <button class="mode-btn" onclick="setMode('fetch')" id="mode-fetch">📥 FETCH LOG</button>
-  </div>
-
-  <!-- LOG MODE -->
-  <div id="view-log">
-    <div class="panel">
-      <div class="panel-header">
-        <span>Task Logger</span><span class="ch">→ #daily-work-log</span>
-        <span class="proxy-badge">⚡ CF WORKER</span>
+<!-- ════════════════════════════════════ AUTH SCREEN ════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">👻</div>
+      <div>
+        <h1>GhostStack</h1>
+        <p>G6 OPS DISPATCH</p>
       </div>
-      <div class="panel-body">
-        <div class="cat-row">
-          <button class="cat-btn active" data-cat="tier2" onclick="setCat('tier2')">TIER 2 SYS ADMIN</button>
-          <button class="cat-btn" data-cat="tech" onclick="setCat('tech')">TECH REQUIREMENTS</button>
-          <button class="cat-btn" data-cat="cyber" onclick="setCat('cyber')">CYBER GOVERNANCE</button>
-          <button class="cat-btn" data-cat="training" onclick="setCat('training')">TRAINING</button>
-        </div>
-        <div class="task-input-row">
-          <input class="task-input" id="task-input" placeholder="e.g. Imaged workstation, serial #..." onkeydown="if(event.key==='Enter') logTask()" />
-          <button class="log-btn" onclick="logTask()" id="log-btn">POST →</button>
-        </div>
-        <div class="divider"></div>
-        <div class="task-feed" id="task-feed">
-          <div class="empty-state">// NO TASKS LOGGED YET — START YOUR WORK CALL //</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="authTab('register')">Request Access</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
+
+    <form id="form-login" class="auth-form active" onsubmit="return doLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="login-email" type="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-pass" type="password" placeholder="Enter password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="auth-btn" id="login-btn">SIGN IN</button>
+    </form>
+
+    <form id="form-register" class="auth-form" onsubmit="return doRegister(event)">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" id="reg-name" type="text" placeholder="Your full name" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="reg-email" type="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-pass" type="password" placeholder="Create a password" required autocomplete="new-password" oninput="checkPwStrength()" />
+        <ul class="pw-requirements" id="pw-req">
+          <li id="pw-len">Minimum 8 characters</li>
+        </ul>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input class="form-input" id="reg-pass2" type="password" placeholder="Confirm password" required autocomplete="new-password" />
+      </div>
+      <button type="submit" class="auth-btn" id="reg-btn">REQUEST ACCESS</button>
+      <div class="form-hint" style="margin-top:10px;text-align:center;">Your request will be reviewed by an administrator.</div>
+    </form>
+
+    <div class="auth-footer"><span>SECURED</span> BY CLOUDFLARE WORKERS + D1</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════ APP SCREEN ════════════════════════════════════ -->
+<div id="app-screen">
+  <div class="container">
+    <div class="header">
+      <div class="logo">👻</div>
+      <div class="header-text">
+        <h1>GhostStack</h1>
+        <p>G6 OPS DISPATCH // DAILY WORK CALL SYSTEM</p>
+      </div>
+      <div class="header-right">
+        <div class="status-dot"><div class="dot"></div>PROXY LIVE</div>
+        <div class="user-pill" id="user-pill" onclick="toggleUserMenu()">
+          <div class="user-avatar" id="user-avatar"></div>
+          <span class="user-name" id="user-name"></span>
+          <div class="user-menu" id="user-menu">
+            <div class="user-menu-item" style="pointer-events:none;color:var(--muted);font-size:9px;" id="user-menu-role"></div>
+            <div class="user-menu-sep"></div>
+            <button class="user-menu-item" onclick="event.stopPropagation();doLogout()">Sign Out</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- EOD MODE -->
-  <div id="view-eod" style="display:none">
-    <div class="panel">
-      <div class="panel-header">
-        <span>EOD Generator</span><span class="ch">→ Claude → #claude-dispatch</span>
-        <span class="proxy-badge">⚡ CF WORKER</span>
-      </div>
-      <div class="panel-body">
-        <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6;">Fetches today's tasks from #daily-work-log → Claude formats your Daily Work Call → posts to #claude-dispatch.</p>
-        <button class="eod-btn" onclick="generateEOD()" id="eod-gen-btn">⚡ GENERATE DAILY WORK CALL</button>
-      </div>
+    <div class="mode-toggle" id="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('log')" id="mode-log">LOG TASK</button>
+      <button class="mode-btn" onclick="setMode('eod')" id="mode-eod">GENERATE EOD</button>
+      <button class="mode-btn" onclick="setMode('fetch')" id="mode-fetch">FETCH LOG</button>
     </div>
-    <div class="panel output-panel" id="output-panel">
-      <div class="panel-header"><span>Generated Draft</span><span class="ch">→ ready to post</span></div>
-      <div class="panel-body">
-        <div class="output-box" id="output-box"></div>
-        <div class="output-actions">
-          <button class="copy-btn" onclick="copyOutput()">📋 COPY</button>
-          <button class="post-btn" onclick="postToSlack()" id="post-btn">✓ POST TO #claude-dispatch</button>
+
+    <!-- LOG MODE -->
+    <div id="view-log">
+      <div class="panel">
+        <div class="panel-header">
+          <span>Task Logger</span><span class="ch">→ #daily-work-log</span>
+          <span class="proxy-badge">CF WORKER</span>
         </div>
-        <div class="timestamp" id="gen-timestamp"></div>
+        <div class="panel-body">
+          <div class="cat-row">
+            <button class="cat-btn active" data-cat="tier2" onclick="setCat('tier2')">TIER 2 SYS ADMIN</button>
+            <button class="cat-btn" data-cat="tech" onclick="setCat('tech')">TECH REQUIREMENTS</button>
+            <button class="cat-btn" data-cat="cyber" onclick="setCat('cyber')">CYBER GOVERNANCE</button>
+            <button class="cat-btn" data-cat="training" onclick="setCat('training')">TRAINING</button>
+          </div>
+          <div class="task-input-row">
+            <input class="task-input" id="task-input" placeholder="e.g. Imaged workstation, serial #..." onkeydown="if(event.key==='Enter') logTask()" />
+            <button class="log-btn" onclick="logTask()" id="log-btn">POST</button>
+          </div>
+          <div class="divider"></div>
+          <div class="task-feed" id="task-feed">
+            <div class="empty-state">// NO TASKS LOGGED YET — START YOUR WORK CALL //</div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- FETCH MODE -->
-  <div id="view-fetch" style="display:none">
-    <div class="panel">
-      <div class="panel-header">
-        <span>Channel Log</span><span class="ch">→ #daily-work-log</span>
-        <span class="proxy-badge">⚡ CF WORKER</span>
+    <!-- EOD MODE -->
+    <div id="view-eod" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <span>EOD Generator</span><span class="ch">→ Claude → #claude-dispatch</span>
+          <span class="proxy-badge">CF WORKER</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;line-height:1.6;">Fetches today's tasks from #daily-work-log → Claude formats your Daily Work Call → posts to #claude-dispatch.</p>
+          <button class="eod-btn" onclick="generateEOD()" id="eod-gen-btn">GENERATE DAILY WORK CALL</button>
+        </div>
       </div>
-      <div class="panel-body">
-        <button class="fetch-btn" onclick="fetchLog()">↓ PULL LATEST MESSAGES</button>
-        <div class="task-feed" id="fetch-feed">
-          <div class="empty-state">// PULL MESSAGES FROM SLACK //</div>
+      <div class="panel output-panel" id="output-panel">
+        <div class="panel-header"><span>Generated Draft</span><span class="ch">→ ready to post</span></div>
+        <div class="panel-body">
+          <div class="output-box" id="output-box"></div>
+          <div class="output-actions">
+            <button class="copy-btn" onclick="copyOutput()">COPY</button>
+            <button class="post-btn" onclick="postToSlack()" id="post-btn">POST TO #claude-dispatch</button>
+          </div>
+          <div class="timestamp" id="gen-timestamp"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FETCH MODE -->
+    <div id="view-fetch" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <span>Channel Log</span><span class="ch">→ #daily-work-log</span>
+          <span class="proxy-badge">CF WORKER</span>
+        </div>
+        <div class="panel-body">
+          <button class="fetch-btn" onclick="fetchLog()">PULL LATEST MESSAGES</button>
+          <div class="task-feed" id="fetch-feed">
+            <div class="empty-state">// PULL MESSAGES FROM SLACK //</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN MODE -->
+    <div id="view-admin" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <span>User Management</span><span class="ch">→ Admin</span>
+          <span class="proxy-badge">D1 DATABASE</span>
+        </div>
+        <div class="panel-body">
+          <div class="admin-filter-row">
+            <button class="admin-filter-btn active" onclick="setAdminFilter('all')">ALL</button>
+            <button class="admin-filter-btn" onclick="setAdminFilter('pending')">PENDING</button>
+            <button class="admin-filter-btn" onclick="setAdminFilter('approved')">APPROVED</button>
+            <button class="admin-filter-btn" onclick="setAdminFilter('denied')">DENIED</button>
+          </div>
+          <div id="admin-users-list">
+            <div class="empty-state"><span class="spinner"></span> LOADING USERS...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -198,57 +341,17 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="modal-overlay" id="auth-modal">
-  <div class="modal">
-    <h2>Sign In</h2>
-    <p>Access your GhostStack dashboard</p>
-    <input class="modal-input" id="auth-email" type="email" placeholder="Email address" />
-    <input class="modal-input" id="auth-pass" type="password" placeholder="Password" />
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeSignIn()">CANCEL</button>
-      <button class="modal-primary" onclick="handleSignIn()">SIGN IN</button>
-    </div>
-    <div class="modal-divider">OR</div>
-    <button class="modal-primary" style="width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);" onclick="handleSignIn()">CREATE ACCOUNT</button>
-  </div>
-</div>
-
 <script>
-  function openSignIn() { document.getElementById('auth-modal').classList.add('visible'); }
-  function closeSignIn() { document.getElementById('auth-modal').classList.remove('visible'); }
-  function handleSignIn() {
-    const email = document.getElementById('auth-email').value.trim();
-    if (!email) { document.getElementById('auth-email').focus(); return; }
-    localStorage.setItem('gs-user', email);
-    closeSignIn();
-    renderAuth();
-    showToast('SIGNED IN AS ' + email.split('@')[0].toUpperCase());
-  }
-  function signOut() {
-    localStorage.removeItem('gs-user');
-    renderAuth();
-    showToast('SIGNED OUT');
-  }
-  function renderAuth() {
-    const user = localStorage.getItem('gs-user');
-    const area = document.getElementById('auth-area');
-    if (user) {
-      const name = user.split('@')[0];
-      const initials = name.substring(0,2).toUpperCase();
-      area.innerHTML = `<div class="user-info"><div class="user-avatar">${initials}</div><span>${name}</span><button class="sign-out-btn" onclick="signOut()">SIGN OUT</button></div>`;
-    } else {
-      area.innerHTML = '<button class="sign-in-btn" onclick="openSignIn()">SIGN IN</button>';
-    }
-  }
-  document.addEventListener('DOMContentLoaded', renderAuth);
-  document.getElementById('auth-modal').addEventListener('click', function(e) { if (e.target === this) closeSignIn(); });
-
   const PROXY = 'https://ghoststack-proxy.greyhawkdiesel.workers.dev';
   const LOG_CHANNEL = 'C0B0YHKH4QM';
   const DISPATCH_CHANNEL = 'C0B0LGLTLJK';
+
+  let authToken = localStorage.getItem('gs-token');
+  let currentUser = null;
   let currentCat = 'tier2';
   let localTasks = [];
   let generatedDraft = '';
+  let adminFilter = 'all';
 
   const catLabels = {
     tier2: 'Obj 1 – Tier 2 Sys Admin',
@@ -257,11 +360,181 @@
     training: 'Obj 4 – Professional/Training'
   };
 
+  // ── HELPERS ──
+  function showToast(msg, error = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (error ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 2800);
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function authHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken };
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg; el.style.display = 'block';
+    document.getElementById('auth-success').style.display = 'none';
+  }
+
+  function showAuthSuccess(msg) {
+    const el = document.getElementById('auth-success');
+    el.textContent = msg; el.style.display = 'block';
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  function hideAuthMessages() {
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-success').style.display = 'none';
+  }
+
+  // ── AUTH TAB SWITCHING ──
+  function authTab(tab) {
+    hideAuthMessages();
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    if (tab === 'login') {
+      document.querySelectorAll('.auth-tab')[0].classList.add('active');
+      document.getElementById('form-login').classList.add('active');
+    } else {
+      document.querySelectorAll('.auth-tab')[1].classList.add('active');
+      document.getElementById('form-register').classList.add('active');
+    }
+  }
+
+  function checkPwStrength() {
+    const pw = document.getElementById('reg-pass').value;
+    document.getElementById('pw-len').className = pw.length >= 8 ? 'met' : '';
+  }
+
+  // ── AUTH ACTIONS ──
+  async function doLogin(e) {
+    e.preventDefault();
+    hideAuthMessages();
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> AUTHENTICATING...';
+    try {
+      const res = await fetch(`${PROXY}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('login-email').value.trim(),
+          password: document.getElementById('login-pass').value
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      authToken = data.token;
+      currentUser = data.user;
+      localStorage.setItem('gs-token', authToken);
+      enterApp();
+    } catch (err) { showAuthError(err.message); }
+    btn.disabled = false; btn.textContent = 'SIGN IN';
+    return false;
+  }
+
+  async function doRegister(e) {
+    e.preventDefault();
+    hideAuthMessages();
+    const pw = document.getElementById('reg-pass').value;
+    const pw2 = document.getElementById('reg-pass2').value;
+    if (pw !== pw2) { showAuthError('Passwords do not match'); return false; }
+    if (pw.length < 8) { showAuthError('Password must be at least 8 characters'); return false; }
+    const btn = document.getElementById('reg-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> SUBMITTING...';
+    try {
+      const res = await fetch(`${PROXY}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('reg-email').value.trim(),
+          password: pw,
+          displayName: document.getElementById('reg-name').value.trim()
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      showAuthSuccess(data.message);
+      document.getElementById('form-register').reset();
+    } catch (err) { showAuthError(err.message); }
+    btn.disabled = false; btn.textContent = 'REQUEST ACCESS';
+    return false;
+  }
+
+  async function doLogout() {
+    try {
+      await fetch(`${PROXY}/auth/logout`, { method: 'POST', headers: authHeaders() });
+    } catch (_) {}
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('gs-token');
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('form-login').reset();
+    hideAuthMessages();
+  }
+
+  // ── SESSION CHECK ──
+  async function checkSession() {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`${PROXY}/auth/session`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error();
+      currentUser = data.user;
+      enterApp();
+    } catch (_) {
+      authToken = null;
+      localStorage.removeItem('gs-token');
+    }
+  }
+
+  function enterApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    const initials = currentUser.displayName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-name').textContent = currentUser.displayName;
+    document.getElementById('user-menu-role').textContent = currentUser.role.toUpperCase();
+
+    const toggle = document.getElementById('mode-toggle');
+    const existingAdmin = document.getElementById('mode-admin');
+    if (currentUser.role === 'admin' && !existingAdmin) {
+      const btn = document.createElement('button');
+      btn.className = 'mode-btn admin-tab';
+      btn.id = 'mode-admin';
+      btn.onclick = () => setMode('admin');
+      btn.innerHTML = 'ADMIN <span class="pending-count" id="pending-count" style="display:none"></span>';
+      toggle.appendChild(btn);
+      loadPendingCount();
+    }
+  }
+
+  // ── USER MENU ──
+  function toggleUserMenu() {
+    document.getElementById('user-menu').classList.toggle('visible');
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#user-pill')) {
+      document.getElementById('user-menu')?.classList.remove('visible');
+    }
+  });
+
+  // ── APP MODES ──
   function setMode(mode) {
-    ['log','eod','fetch'].forEach(m => {
-      document.getElementById(`view-${m}`).style.display = m === mode ? 'block' : 'none';
-      document.getElementById(`mode-${m}`).classList.toggle('active', m === mode);
+    const modes = ['log','eod','fetch','admin'];
+    modes.forEach(m => {
+      const view = document.getElementById(`view-${m}`);
+      const btn = document.getElementById(`mode-${m}`);
+      if (view) view.style.display = m === mode ? 'block' : 'none';
+      if (btn) btn.classList.toggle('active', m === mode);
     });
+    if (mode === 'admin') loadAdminUsers();
   }
 
   function setCat(cat) {
@@ -270,28 +543,16 @@
     document.querySelector(`[data-cat="${cat}"]`).classList.add('active');
   }
 
-  function getTime() {
-    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  }
-
-  function showToast(msg, error = false) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast show' + (error ? ' error' : '');
-    setTimeout(() => t.className = 'toast', 2800);
-  }
-
+  // ── TASK LOGGING ──
   async function logTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
     if (!text) return;
     const btn = document.getElementById('log-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>POSTING';
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
     try {
       const res = await fetch(`${PROXY}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ channel: LOG_CHANNEL, text: `[${catLabels[currentCat].toUpperCase()}] ${text}` })
       });
       const data = await res.json();
@@ -299,25 +560,25 @@
       localTasks.push({ cat: currentCat, text, time: getTime() });
       renderFeed();
       input.value = '';
-      showToast('✓ TASK LOGGED TO SLACK');
-    } catch (e) { showToast('✗ POST FAILED: ' + e.message, true); }
-    btn.disabled = false;
-    btn.textContent = 'POST →';
+      showToast('TASK LOGGED TO SLACK');
+    } catch (e) { showToast('POST FAILED: ' + e.message, true); }
+    btn.disabled = false; btn.textContent = 'POST';
   }
 
   function renderFeed() {
     const feed = document.getElementById('task-feed');
     if (!localTasks.length) { feed.innerHTML = '<div class="empty-state">// NO TASKS LOGGED YET //</div>'; return; }
     feed.innerHTML = localTasks.slice().reverse().map(t =>
-      `<div class="task-item" data-cat="${t.cat}"><span class="task-time">${t.time}</span><span class="task-text">${t.text}</span></div>`
+      `<div class="task-item"><span class="task-time">${t.time}</span><span class="task-text">${t.text}</span></div>`
     ).join('');
   }
 
+  // ── FETCH LOG ──
   async function fetchLog() {
     const feed = document.getElementById('fetch-feed');
     feed.innerHTML = '<div class="empty-state"><span class="spinner"></span> FETCHING...</div>';
     try {
-      const res = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&limit=30`);
+      const res = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&limit=30`, { headers: authHeaders() });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       const msgs = data.messages || [];
@@ -325,123 +586,133 @@
       feed.innerHTML = msgs.map(m => {
         const t = new Date(parseFloat(m.ts) * 1000);
         const time = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        let cat = m.text.includes('TECH') ? 'tech' : m.text.includes('CYBER') ? 'cyber' : m.text.includes('TRAINING') ? 'training' : 'tier2';
-        return `<div class="task-item" data-cat="${cat}"><span class="task-time">${time}</span><span class="task-text">${m.text}</span></div>`;
+        return `<div class="task-item"><span class="task-time">${time}</span><span class="task-text">${m.text}</span></div>`;
       }).join('');
-    } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">✗ ${e.message}</div>`; }
+    } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">${e.message}</div>`; }
   }
 
+  // ── EOD GENERATOR ──
   async function generateEOD() {
     const btn = document.getElementById('eod-gen-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> FETCHING TASKS...';
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> FETCHING TASKS...';
     try {
       const today = new Date(); today.setHours(0,0,0,0);
       const oldest = Math.floor(today.getTime() / 1000);
-      const slackRes = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&oldest=${oldest}&limit=50`);
+      const slackRes = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&oldest=${oldest}&limit=50`, { headers: authHeaders() });
       const slackData = await slackRes.json();
       if (!slackData.ok) throw new Error(slackData.error);
       const msgs = (slackData.messages || []).map(m => m.text).reverse();
       if (!msgs.length) throw new Error('No tasks logged today in #daily-work-log');
-
       btn.innerHTML = '<span class="spinner"></span> ASKING CLAUDE...';
-
-      const dateStr = new Date().toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-      });
-
-      const prompt = `You are a [redacted] assistant. Generate a Daily Work Call email in UNCLASSIFIED format.
-
-Today's date: ${dateStr}
-Tasks logged today:
-${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}
-
-Format EXACTLY as:
-
-UNCLASSIFIED
-
-SUBJECT: Daily Work Summary - [redacted] - UNCLASSIFIED - [UNCLASSIFIED]
-
-Good morning/afternoon,
-
-This is my daily work call for ${dateStr}.
-
-––––––––––––––––––––––––––––
-Objective 1 – Tier 2 Sys Admin
-––––––––––––––––––––––––––––
-- [Tier 2 tasks or recurring: AV operability checks ([redacted], Rowe Hall, Goddard, MI Library), device imaging support]
-
-––––––––––––––––––––––––––––
-Objective 2 – Tech Requirements
-––––––––––––––––––––––––––––
-- [Tech tasks or recurring: [redacted] PTI searches, SCIF KVM procurement coordination]
-
-––––––––––––––––––––––––––––
-Objective 3 – Cyber Security Governance
-––––––––––––––––––––––––––––
-- [Cyber tasks or recurring: [redacted] certificate monitoring, SIPR 10zig project coordination]
-
-––––––––––––––––––––––––––––
-Objective 4 – Professional/Training
-––––––––––––––––––––––––––––
-- [Training tasks. Always include: Continued [redacted] at [redacted]]
-
-V/R,
-David Wilson
-[redacted]
-[redacted] | [redacted]
-[redacted]
-[redacted]
-
-UNCLASSIFIED
-
-Return ONLY the formatted email, nothing else.`;
-
-      // NOTE: no apiKey field anymore — the Worker injects the key server-side.
+      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const prompt = `You are a [redacted] assistant. Generate a Daily Work Call email in UNCLASSIFIED format.\n\nToday's date: ${dateStr}\nTasks logged today:\n${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}\n\nFormat EXACTLY as:\n\nUNCLASSIFIED\n\nSUBJECT: Daily Work Summary - [redacted] - UNCLASSIFIED - [UNCLASSIFIED]\n\nGood morning/afternoon,\n\nThis is my daily work call for ${dateStr}.\n\n––––––––––––––––––––––––––––\nObjective 1 – Tier 2 Sys Admin\n––––––––––––––––––––––––––––\n- [Tier 2 tasks]\n\n––––––––––––––––––––––––––––\nObjective 2 – Tech Requirements\n––––––––––––––––––––––––––––\n- [Tech tasks]\n\n––––––––––––––––––––––––––––\nObjective 3 – Cyber Security Governance\n––––––––––––––––––––––––––––\n- [Cyber tasks]\n\n––––––––––––––––––––––––––––\nObjective 4 – Professional/Training\n––––––––––––––––––––––––––––\n- [Training tasks. Always include: Continued [redacted] at [redacted]]\n\nV/R,\nDavid Wilson\n[redacted]\n[redacted] | [redacted]\n[redacted]\n[redacted]\n\nUNCLASSIFIED\n\nReturn ONLY the formatted email, nothing else.`;
       const claudeRes = await fetch(`${PROXY}/claude`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: prompt }]
-        })
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
       });
-
       const claudeData = await claudeRes.json();
       generatedDraft = claudeData.content?.[0]?.text || '';
       if (!generatedDraft) throw new Error('Claude returned empty response');
-
       document.getElementById('output-box').textContent = generatedDraft;
       document.getElementById('gen-timestamp').textContent = `Generated at ${getTime()} — ready to post`;
       document.getElementById('output-panel').classList.add('visible');
-      showToast('✓ DRAFT GENERATED');
-
-    } catch (e) { showToast('✗ ERROR: ' + e.message, true); }
-    btn.disabled = false;
-    btn.textContent = '⚡ GENERATE DAILY WORK CALL';
+      showToast('DRAFT GENERATED');
+    } catch (e) { showToast('ERROR: ' + e.message, true); }
+    btn.disabled = false; btn.textContent = 'GENERATE DAILY WORK CALL';
   }
 
   async function postToSlack() {
     if (!generatedDraft) return;
     const btn = document.getElementById('post-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> POSTING...';
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> POSTING...';
     try {
       const res = await fetch(`${PROXY}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ channel: DISPATCH_CHANNEL, text: generatedDraft })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      showToast('✓ POSTED TO #claude-dispatch');
-    } catch (e) { showToast('✗ POST FAILED: ' + e.message, true); }
-    btn.disabled = false;
-    btn.textContent = '✓ POST TO #claude-dispatch';
+      showToast('POSTED TO #claude-dispatch');
+    } catch (e) { showToast('POST FAILED: ' + e.message, true); }
+    btn.disabled = false; btn.textContent = 'POST TO #claude-dispatch';
   }
 
   function copyOutput() {
-    navigator.clipboard.writeText(generatedDraft).then(() => showToast('✓ COPIED TO CLIPBOARD'));
+    navigator.clipboard.writeText(generatedDraft).then(() => showToast('COPIED TO CLIPBOARD'));
   }
+
+  // ── ADMIN ──
+  async function loadPendingCount() {
+    try {
+      const res = await fetch(`${PROXY}/admin/users?status=pending`, { headers: authHeaders() });
+      const data = await res.json();
+      if (data.ok) {
+        const count = data.users.length;
+        const badge = document.getElementById('pending-count');
+        if (badge) {
+          badge.textContent = count;
+          badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+      }
+    } catch (_) {}
+  }
+
+  function setAdminFilter(filter) {
+    adminFilter = filter;
+    document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    loadAdminUsers();
+  }
+
+  async function loadAdminUsers() {
+    const list = document.getElementById('admin-users-list');
+    list.innerHTML = '<div class="empty-state"><span class="spinner"></span> LOADING...</div>';
+    try {
+      const res = await fetch(`${PROXY}/admin/users?status=${adminFilter}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      if (!data.users.length) {
+        list.innerHTML = '<div class="empty-state">// NO USERS FOUND //</div>';
+        return;
+      }
+      list.innerHTML = data.users.map(u => {
+        const date = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        let actions = '';
+        if (u.status === 'pending') {
+          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${u.id})">APPROVE</button><button class="admin-action-btn deny" onclick="adminAction('deny',${u.id})">DENY</button>`;
+        } else if (u.status === 'approved' && u.role !== 'admin') {
+          actions = `<button class="admin-action-btn deny" onclick="adminAction('deny',${u.id})">REVOKE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${u.id})">DELETE</button>`;
+        } else if (u.status === 'denied') {
+          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${u.id})">APPROVE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${u.id})">DELETE</button>`;
+        }
+        return `<div class="admin-user-row">
+          <div class="admin-user-info">
+            <div class="admin-user-email">${u.email}</div>
+            <div class="admin-user-name">${u.display_name} <span class="admin-user-date">${date}</span></div>
+          </div>
+          <span class="admin-status ${u.status}">${u.status}${u.role === 'admin' ? ' (ADMIN)' : ''}</span>
+          <div class="admin-actions">${actions}</div>
+        </div>`;
+      }).join('');
+    } catch (e) { list.innerHTML = `<div class="empty-state" style="color:var(--red)">${e.message}</div>`; }
+  }
+
+  async function adminAction(action, userId) {
+    try {
+      const res = await fetch(`${PROXY}/admin/${action}`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      showToast(data.message.toUpperCase());
+      loadAdminUsers();
+      loadPendingCount();
+    } catch (e) { showToast(e.message, true); }
+  }
+
+  // ── INIT ──
+  checkSession();
 </script>
 </body>
 </html>
