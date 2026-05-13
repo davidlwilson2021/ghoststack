@@ -726,10 +726,10 @@
   }
 
   // ── TASK LOGGING ──
-  // Primary storage is D1 via /tasks. While the EOD generator still reads
-  // Slack history (replaced in step 6), we also fire-and-forget /log so
-  // today's tasks are visible to the legacy reader. Once /eod reads from
-  // D1, the /log mirror can be removed.
+  // D1 is the source of truth for tasks. The EOD generator reads from D1,
+  // so no Slack mirror is needed. Users who want their tasks mirrored to
+  // a Slack channel can configure their per-user Slack token in Settings
+  // and a future step will wire up that mirror.
   async function logTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
@@ -747,14 +747,6 @@
       renderFeed();
       input.value = '';
       showToast('TASK LOGGED');
-
-      // Best-effort Slack mirror for backward compatibility with the
-      // current EOD generator. Failures are logged but don't surface.
-      const mirrorText = `[${catLabels[currentCat].toUpperCase()}] ${text}`;
-      fetch(`${PROXY}/log`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ channel: LOG_CHANNEL, text: mirrorText }),
-      }).catch(e => console.warn('Slack mirror failed:', e));
     } catch (e) { showToast('POST FAILED: ' + e.message, true); }
     btn.disabled = false; btn.textContent = 'POST';
   }
@@ -831,29 +823,25 @@
   }
 
   // ── EOD GENERATOR ──
+  // All heavy lifting (task fetch, prompt construction, AI call) is
+  // now server-side at POST /eod/generate, using the user's stored
+  // provider, model, key, and email template. The client just shows
+  // the returned draft.
   async function generateEOD() {
     const btn = document.getElementById('eod-gen-btn');
-    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> FETCHING TASKS...';
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> GENERATING...';
     try {
-      const today = new Date(); today.setHours(0,0,0,0);
-      const oldest = Math.floor(today.getTime() / 1000);
-      const slackRes = await fetch(`${PROXY}/history?channel=${LOG_CHANNEL}&oldest=${oldest}&limit=50`, { headers: authHeaders() });
-      const slackData = await slackRes.json();
-      if (!slackData.ok) throw new Error(slackData.error);
-      const msgs = (slackData.messages || []).map(m => m.text).reverse();
-      if (!msgs.length) throw new Error('No tasks logged today in #daily-work-log');
-      btn.innerHTML = '<span class="spinner"></span> ASKING CLAUDE...';
-      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const prompt = `You are an assistant that writes professional End-of-Day status emails for IT operations staff. Generate a clear, properly formatted daily summary email from the logged tasks.\n\nToday's date: ${dateStr}\nTasks logged today:\n${msgs.map((m,i) => `${i+1}. ${m}`).join('\n')}\n\nFormat as:\n\nSUBJECT: Daily Work Summary - ${currentUser.displayName} - ${dateStr}\n\nGood morning/afternoon,\n\nThis is my daily summary for ${dateStr}.\n\n––––––––––––––––––––––––––––\nTier 2 Sys Admin\n––––––––––––––––––––––––––––\n- [Tier 2 tasks]\n\n––––––––––––––––––––––––––––\nTech Requirements\n––––––––––––––––––––––––––––\n- [Tech tasks]\n\n––––––––––––––––––––––––––––\nCyber Security Governance\n––––––––––––––––––––––––––––\n- [Cyber tasks]\n\n––––––––––––––––––––––––––––\nProfessional / Training\n––––––––––––––––––––––––––––\n- [Training tasks]\n\nOnly include sections that have relevant tasks. End with:\n\nV/R,\n${currentUser.displayName}\n\nReturn ONLY the formatted email, nothing else.`;
-      const claudeRes = await fetch(`${PROXY}/claude`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
+      const res = await fetch(`${PROXY}/eod/generate`, {
+        method: 'POST', headers: authHeaders(), body: '{}'
       });
-      const claudeData = await claudeRes.json();
-      generatedDraft = claudeData.content?.[0]?.text || '';
-      if (!generatedDraft) throw new Error('Claude returned empty response');
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      generatedDraft = data.draft || '';
+      if (!generatedDraft) throw new Error('AI returned empty response');
       document.getElementById('output-box').textContent = generatedDraft;
-      document.getElementById('gen-timestamp').textContent = `Generated at ${getTime()} — ready to post`;
+      const provLabel = data.provider === 'openai' ? 'OpenAI' : 'Claude';
+      document.getElementById('gen-timestamp').textContent =
+        `Generated at ${getTime()} via ${esc(provLabel)} (${esc(data.model || '')}) — ${data.tasks_count} task${data.tasks_count === 1 ? '' : 's'}`;
       document.getElementById('output-panel').classList.add('visible');
       showToast('DRAFT GENERATED');
     } catch (e) { showToast('ERROR: ' + e.message, true); }
