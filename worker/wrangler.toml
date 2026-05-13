@@ -9,6 +9,7 @@ workers_dev = true
 binding = "DB"
 database_name = "ghoststack-auth"
 database_id = "f0986b1a-b903-407d-8040-25a18a1e7baf"
+migrations_dir = "migrations"
 
 [vars]
 CORS_ORIGIN = "https://ghoststack.pages.dev"
