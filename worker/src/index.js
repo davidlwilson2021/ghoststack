@@ -51,6 +51,7 @@ export default {
 
     // ── EOD routes (Phase 2) ──
     if (path === '/eod/generate' && method === 'POST') return eod.generateEod(request, env);
+    if (path === '/eod/send' && method === 'POST') return eod.sendEod(request, env);
 
     // ── Phase 1 legacy proxy routes (kept for backward compatibility) ──
     if (path === '/log' && method === 'POST') return proxy.logToSlack(request, env);
