@@ -9,6 +9,7 @@ import { corsHeaders, err } from './lib/cors.js';
 import { seedAdmin } from './lib/seed.js';
 import * as auth from './routes/auth.js';
 import * as admin from './routes/admin.js';
+import * as settings from './routes/settings.js';
 import * as proxy from './routes/proxy.js';
 
 export default {
@@ -35,6 +36,10 @@ export default {
     if (path === '/admin/approve' && method === 'POST') return admin.approve(request, env);
     if (path === '/admin/deny' && method === 'POST') return admin.deny(request, env);
     if (path === '/admin/delete' && method === 'POST') return admin.deleteUser(request, env);
+
+    // ── Settings routes (Phase 2) ──
+    if (path === '/settings' && method === 'GET') return settings.getSettings(request, env);
+    if (path === '/settings' && method === 'POST') return settings.updateSettings(request, env);
 
     // ── Phase 1 legacy proxy routes (kept for backward compatibility) ──
     if (path === '/log' && method === 'POST') return proxy.logToSlack(request, env);
