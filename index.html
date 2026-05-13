@@ -387,6 +387,12 @@
   };
 
   // ── HELPERS ──
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
   function showToast(msg, error = false) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -595,7 +601,7 @@
     const feed = document.getElementById('task-feed');
     if (!localTasks.length) { feed.innerHTML = '<div class="empty-state">// NO TASKS LOGGED YET //</div>'; return; }
     feed.innerHTML = localTasks.slice().reverse().map(t =>
-      `<div class="task-item"><span class="task-time">${t.time}</span><span class="task-text">${t.text}</span></div>`
+      `<div class="task-item"><span class="task-time">${esc(t.time)}</span><span class="task-text">${esc(t.text)}</span></div>`
     ).join('');
   }
 
@@ -612,9 +618,9 @@
       feed.innerHTML = msgs.map(m => {
         const t = new Date(parseFloat(m.ts) * 1000);
         const time = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        return `<div class="task-item"><span class="task-time">${time}</span><span class="task-text">${m.text}</span></div>`;
+        return `<div class="task-item"><span class="task-time">${esc(time)}</span><span class="task-text">${esc(m.text)}</span></div>`;
       }).join('');
-    } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">${e.message}</div>`; }
+    } catch (e) { feed.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}</div>`; }
   }
 
   // ── EOD GENERATOR ──
@@ -703,24 +709,25 @@
       }
       list.innerHTML = data.users.map(u => {
         const date = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const uid = parseInt(u.id, 10);
         let actions = '';
         if (u.status === 'pending') {
-          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${u.id})">APPROVE</button><button class="admin-action-btn deny" onclick="adminAction('deny',${u.id})">DENY</button>`;
+          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${uid})">APPROVE</button><button class="admin-action-btn deny" onclick="adminAction('deny',${uid})">DENY</button>`;
         } else if (u.status === 'approved' && u.role !== 'admin') {
-          actions = `<button class="admin-action-btn deny" onclick="adminAction('deny',${u.id})">REVOKE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${u.id})">DELETE</button>`;
+          actions = `<button class="admin-action-btn deny" onclick="adminAction('deny',${uid})">REVOKE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
         } else if (u.status === 'denied') {
-          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${u.id})">APPROVE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${u.id})">DELETE</button>`;
+          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${uid})">APPROVE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
         }
         return `<div class="admin-user-row">
           <div class="admin-user-info">
-            <div class="admin-user-email">${u.email}</div>
-            <div class="admin-user-name">${u.display_name} <span class="admin-user-date">${date}</span></div>
+            <div class="admin-user-email">${esc(u.email)}</div>
+            <div class="admin-user-name">${esc(u.display_name)} <span class="admin-user-date">${esc(date)}</span></div>
           </div>
-          <span class="admin-status ${u.status}">${u.status}${u.role === 'admin' ? ' (ADMIN)' : ''}</span>
+          <span class="admin-status ${esc(u.status)}">${esc(u.status)}${u.role === 'admin' ? ' (ADMIN)' : ''}</span>
           <div class="admin-actions">${actions}</div>
         </div>`;
       }).join('');
-    } catch (e) { list.innerHTML = `<div class="empty-state" style="color:var(--red)">${e.message}</div>`; }
+    } catch (e) { list.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}</div>`; }
   }
 
   async function adminAction(action, userId) {
