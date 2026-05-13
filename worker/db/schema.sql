@@ -54,13 +54,15 @@ CREATE INDEX idx_tasks_user_created ON tasks(user_id, created_at);
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE user_settings (
   user_id INTEGER PRIMARY KEY,
-  anthropic_key_encrypted TEXT,            -- AES-GCM ciphertext, base64
-  anthropic_key_iv TEXT,                   -- AES-GCM IV, base64
+  ai_provider TEXT NOT NULL DEFAULT 'anthropic',  -- 'anthropic' | 'openai'
+  ai_model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
+  ai_key_encrypted TEXT,                   -- AES-GCM ciphertext, base64
+  ai_key_iv TEXT,                          -- AES-GCM IV, base64
   slack_bot_token_encrypted TEXT,
   slack_bot_token_iv TEXT,
   slack_log_channel TEXT,
   slack_dispatch_channel TEXT,
-  email_template TEXT,                     -- JSON {subject, body_sections, signature}
+  email_template TEXT,                     -- JSON {subject, body_intro, body_signature}
   default_recipients TEXT,                 -- JSON ['user@x.com', 'boss@y.com']
   schedule_enabled INTEGER NOT NULL DEFAULT 0,
   schedule_time TEXT,                      -- 'HH:MM'
