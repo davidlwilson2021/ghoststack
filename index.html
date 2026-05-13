@@ -8,73 +8,94 @@
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0a0c10; --surface: #0f1318; --border: #1a2030;
-    --accent: #00e5ff; --accent2: #7b2fff; --green: #00ff88;
-    --red: #ff3b5c; --text: #c8d8e8; --muted: #4a5a6a;
+    --bg: #0A0A0A; --surface: #111111; --surface2: #1A1A1A; --border: #2A2A2A;
+    --accent: #C9A96E; --accent-dim: rgba(201,169,110,0.15);
+    --red: #ff3b5c; --text: #F5F5F5; --muted: #999999;
     --mono: 'Share Tech Mono', monospace; --sans: 'Exo 2', sans-serif;
   }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
   body::before {
     content: ''; position: fixed; inset: 0;
-    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(201,169,110,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(201,169,110,0.02) 1px, transparent 1px);
     background-size: 40px 40px; pointer-events: none; z-index: 0;
   }
   .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 24px 16px; }
   .header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .logo { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+  .logo { width: 42px; height: 42px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 20px rgba(201,169,110,0.2); }
   .header-text h1 { font-family: var(--mono); font-size: 18px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
   .header-text p { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 1px; }
-  .status-dot { margin-left: auto; display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--green); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--green)}50%{opacity:.4;box-shadow:none} }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .status-dot { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--accent)}50%{opacity:.4;box-shadow:none} }
+  .sign-in-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--accent); border-radius: 5px; color: var(--accent); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .sign-in-btn:hover { background: var(--accent-dim); }
+  .user-info { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--accent); }
+  .sign-out-btn { padding: 4px 10px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-family: var(--mono); font-size: 9px; cursor: pointer; transition: all 0.2s; }
+  .sign-out-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; }
+  .modal h2 { font-family: var(--mono); font-size: 16px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .modal p { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; margin-bottom: 10px; transition: border-color 0.2s; }
+  .modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
+  .modal-input::placeholder { color: var(--muted); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-primary { flex: 1; padding: 10px; background: var(--accent); border: none; border-radius: 6px; color: var(--bg); font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: opacity 0.2s; }
+  .modal-primary:hover { opacity: 0.85; }
+  .modal-cancel { padding: 10px 16px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+  .modal-cancel:hover { border-color: var(--accent); color: var(--text); }
+  .modal-divider { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 10px; margin: 14px 0; position: relative; }
+  .modal-divider::before, .modal-divider::after { content:''; position: absolute; top: 50%; width: 38%; height: 1px; background: var(--border); }
+  .modal-divider::before { left: 0; }
+  .modal-divider::after { right: 0; }
   .mode-toggle { display: flex; gap: 8px; margin-bottom: 20px; }
   .mode-btn { flex: 1; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-  .mode-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); box-shadow: 0 0 12px rgba(0,229,255,0.1); }
+  .mode-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 12px rgba(201,169,110,0.1); }
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
-  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); }
+  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
   .panel-header span { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
   .panel-header .ch { color: var(--muted); font-size: 10px; }
-  .proxy-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); border-radius: 4px; padding: 3px 8px; margin-left: auto; letter-spacing: 1px; }
+  .proxy-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(201,169,110,0.3); border-radius: 4px; padding: 3px 8px; margin-left: auto; letter-spacing: 1px; }
   .panel-body { padding: 16px; }
   .cat-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
   .cat-btn { padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
-  .cat-btn[data-cat="tier2"].active { background: rgba(0,229,255,0.15); border-color: var(--accent); color: var(--accent); }
-  .cat-btn[data-cat="tech"].active { background: rgba(123,47,255,0.15); border-color: var(--accent2); color: var(--accent2); }
-  .cat-btn[data-cat="cyber"].active { background: rgba(255,59,92,0.15); border-color: var(--red); color: var(--red); }
-  .cat-btn[data-cat="training"].active { background: rgba(0,255,136,0.15); border-color: var(--green); color: var(--green); }
+  .cat-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   .task-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .task-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
-  .task-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,229,255,0.1); }
+  .task-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
   .task-input::placeholder { color: var(--muted); }
-  .log-btn { padding: 10px 18px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border: none; border-radius: 6px; color: #fff; font-family: var(--mono); font-size: 12px; cursor: pointer; letter-spacing: 1px; transition: opacity 0.2s; white-space: nowrap; }
+  .log-btn { padding: 10px 18px; background: var(--accent); border: none; border-radius: 6px; color: var(--bg); font-family: var(--mono); font-size: 12px; font-weight: 600; cursor: pointer; letter-spacing: 1px; transition: opacity 0.2s; white-space: nowrap; }
   .log-btn:hover { opacity: 0.85; }
   .log-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .task-feed { min-height: 80px; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
   .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 5px; border-left: 3px solid var(--border); font-size: 12px; animation: slideIn 0.2s ease; }
   @keyframes slideIn { from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)} }
   .task-item[data-cat="tier2"] { border-left-color: var(--accent); }
-  .task-item[data-cat="tech"] { border-left-color: var(--accent2); }
-  .task-item[data-cat="cyber"] { border-left-color: var(--red); }
-  .task-item[data-cat="training"] { border-left-color: var(--green); }
+  .task-item[data-cat="tech"] { border-left-color: var(--accent); }
+  .task-item[data-cat="cyber"] { border-left-color: var(--accent); }
+  .task-item[data-cat="training"] { border-left-color: var(--accent); }
   .task-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 1px; }
   .task-text { color: var(--text); line-height: 1.4; flex: 1; }
   .empty-state { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 24px; letter-spacing: 1px; }
   .eod-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
-  .eod-btn:hover { background: rgba(0,229,255,0.08); }
+  .eod-btn:hover { background: var(--accent-dim); }
   .eod-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .fetch-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
-  .fetch-btn:hover { border-color: var(--muted); color: var(--text); }
+  .fetch-btn:hover { border-color: var(--accent); color: var(--accent); }
   .output-panel { display: none; }
   .output-panel.visible { display: block; }
   .output-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.7; color: var(--text); white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
   .output-actions { display: flex; gap: 8px; margin-top: 10px; }
   .copy-btn, .post-btn { padding: 8px 14px; border-radius: 5px; font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
   .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); }
-  .copy-btn:hover { border-color: var(--text); color: var(--text); }
-  .post-btn { background: rgba(0,255,136,0.1); border: 1px solid var(--green); color: var(--green); }
-  .post-btn:hover { background: rgba(0,255,136,0.2); }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .post-btn { background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); }
+  .post-btn:hover { background: rgba(201,169,110,0.25); }
   .post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green); color: var(--green); padding: 10px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); padding: 10px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.error { border-color: var(--red); color: var(--red); }
   .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
@@ -93,7 +114,12 @@
       <h1>GhostStack</h1>
       <p>G6 OPS DISPATCH // DAILY WORK CALL SYSTEM</p>
     </div>
-    <div class="status-dot"><div class="dot"></div>PROXY LIVE</div>
+    <div class="header-right">
+      <div class="status-dot"><div class="dot"></div>PROXY LIVE</div>
+      <div id="auth-area">
+        <button class="sign-in-btn" onclick="openSignIn()">SIGN IN</button>
+      </div>
+    </div>
   </div>
 
   <div class="mode-toggle">
@@ -172,11 +198,51 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <h2>Sign In</h2>
+    <p>Access your GhostStack dashboard</p>
+    <input class="modal-input" id="auth-email" type="email" placeholder="Email address" />
+    <input class="modal-input" id="auth-pass" type="password" placeholder="Password" />
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeSignIn()">CANCEL</button>
+      <button class="modal-primary" onclick="handleSignIn()">SIGN IN</button>
+    </div>
+    <div class="modal-divider">OR</div>
+    <button class="modal-primary" style="width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);" onclick="handleSignIn()">CREATE ACCOUNT</button>
+  </div>
+</div>
+
 <script>
-  // ----------------------------------------------------------------
-  // No API key here. The Worker holds the Anthropic key as a Secret
-  // and adds it to the upstream request server-side.
-  // ----------------------------------------------------------------
+  function openSignIn() { document.getElementById('auth-modal').classList.add('visible'); }
+  function closeSignIn() { document.getElementById('auth-modal').classList.remove('visible'); }
+  function handleSignIn() {
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) { document.getElementById('auth-email').focus(); return; }
+    localStorage.setItem('gs-user', email);
+    closeSignIn();
+    renderAuth();
+    showToast('SIGNED IN AS ' + email.split('@')[0].toUpperCase());
+  }
+  function signOut() {
+    localStorage.removeItem('gs-user');
+    renderAuth();
+    showToast('SIGNED OUT');
+  }
+  function renderAuth() {
+    const user = localStorage.getItem('gs-user');
+    const area = document.getElementById('auth-area');
+    if (user) {
+      const name = user.split('@')[0];
+      const initials = name.substring(0,2).toUpperCase();
+      area.innerHTML = `<div class="user-info"><div class="user-avatar">${initials}</div><span>${name}</span><button class="sign-out-btn" onclick="signOut()">SIGN OUT</button></div>`;
+    } else {
+      area.innerHTML = '<button class="sign-in-btn" onclick="openSignIn()">SIGN IN</button>';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', renderAuth);
+  document.getElementById('auth-modal').addEventListener('click', function(e) { if (e.target === this) closeSignIn(); });
+
   const PROXY = 'https://ghoststack-proxy.greyhawkdiesel.workers.dev';
   const LOG_CHANNEL = 'C0B0YHKH4QM';
   const DISPATCH_CHANNEL = 'C0B0LGLTLJK';
