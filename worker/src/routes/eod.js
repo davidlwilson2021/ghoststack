@@ -11,6 +11,7 @@ import { decrypt } from '../lib/crypto.js';
 import { generate } from '../lib/ai/index.js';
 import { sendEmail } from '../lib/email/resend.js';
 import { isValidEmail } from '../lib/validate.js';
+import { logAudit } from '../lib/audit.js';
 
 const MAX_RECIPIENTS = 20;
 
@@ -165,6 +166,16 @@ export async function generateEod(request, env) {
     return err(`AI request failed: ${e.message}`, 502, request);
   }
 
+  await logAudit(env, request, {
+    user_id: session.user_id,
+    action: 'eod.generate',
+    details: {
+      tasks_count: tasks.length,
+      provider: settings.ai_provider,
+      model: settings.ai_model,
+    },
+  });
+
   return json({
     ok: true,
     draft: result.text,
@@ -247,6 +258,15 @@ export async function sendEod(request, env) {
     await env.DB.prepare(
       `UPDATE eod_history SET status='sent', sent_at=datetime('now') WHERE id=?`
     ).bind(historyId).run();
+    await logAudit(env, request, {
+      user_id: session.user_id,
+      action: 'eod.send.success',
+      details: {
+        history_id: historyId,
+        recipients_count: recipients.length,
+        subject,
+      },
+    });
     return json({
       ok: true,
       message: 'EOD sent',
@@ -260,6 +280,15 @@ export async function sendEod(request, env) {
     await env.DB.prepare(
       `UPDATE eod_history SET status='failed', error_message=? WHERE id=?`
     ).bind(e.message, historyId).run();
+    await logAudit(env, request, {
+      user_id: session.user_id,
+      action: 'eod.send.failure',
+      details: {
+        history_id: historyId,
+        recipients_count: recipients.length,
+        error: e.message,
+      },
+    });
     return err(`Failed to send: ${e.message}`, 502, request);
   }
 }

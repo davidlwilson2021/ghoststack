@@ -147,6 +147,24 @@
   .admin-filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
   .admin-filter-btn { padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
   .admin-filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .admin-status.suspended { color: var(--red); background: var(--red-dim); }
+  .admin-action-btn.suspend { background: transparent; border: 1px solid var(--muted); color: var(--muted); }
+  .admin-action-btn.suspend:hover { border-color: #F5A623; color: #F5A623; }
+
+  /* ── MONITOR ── */
+  .mon-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  .mon-table th, .mon-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .mon-table th { color: var(--muted); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; font-size: 9px; background: var(--surface2); position: sticky; top: 0; }
+  .mon-table td { color: var(--text); }
+  .mon-table td.dim { color: var(--muted); }
+  .mon-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mon-table tr:hover td { background: rgba(201,169,110,0.04); }
+  .mon-wrap { max-height: 520px; overflow-y: auto; background: var(--bg); border-radius: 5px; border: 1px solid var(--border); }
+  .mon-action-pill { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 9px; letter-spacing: 0.5px; }
+  .mon-action-pill.success { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .mon-action-pill.failure { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .mon-action-pill.neutral { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .mon-pre { white-space: pre-wrap; word-break: break-word; font-size: 10px; color: var(--muted); max-width: 360px; }
 
   /* ── SETTINGS MODAL ── */
   .settings-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
@@ -383,9 +401,31 @@
             <button class="admin-filter-btn" onclick="setAdminFilter('pending')">PENDING</button>
             <button class="admin-filter-btn" onclick="setAdminFilter('approved')">APPROVED</button>
             <button class="admin-filter-btn" onclick="setAdminFilter('denied')">DENIED</button>
+            <button class="admin-filter-btn" onclick="setAdminFilter('suspended')">SUSPENDED</button>
           </div>
           <div id="admin-users-list">
             <div class="empty-state"><span class="spinner"></span> LOADING USERS...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONITOR MODE (admin-only) -->
+    <div id="view-monitor" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <span>Monitor</span><span class="ch">→ Admin Oversight</span>
+          <span class="proxy-badge">D1 DATABASE</span>
+        </div>
+        <div class="panel-body">
+          <div class="admin-filter-row">
+            <button class="admin-filter-btn active" id="mon-tab-activity" onclick="setMonitorView('activity')">USER ACTIVITY</button>
+            <button class="admin-filter-btn" id="mon-tab-tasks" onclick="setMonitorView('tasks')">ALL TASKS</button>
+            <button class="admin-filter-btn" id="mon-tab-audit" onclick="setMonitorView('audit')">AUDIT LOG</button>
+            <button class="admin-filter-btn" id="mon-tab-eod" onclick="setMonitorView('eod')">EOD HISTORY</button>
+          </div>
+          <div id="monitor-content">
+            <div class="empty-state"><span class="spinner"></span> LOADING...</div>
           </div>
         </div>
       </div>
@@ -712,14 +752,21 @@
     document.getElementById('user-menu-role').textContent = currentUser.role.toUpperCase();
 
     const toggle = document.getElementById('mode-toggle');
-    const existingAdmin = document.getElementById('mode-admin');
-    if (currentUser.role === 'admin' && !existingAdmin) {
-      const btn = document.createElement('button');
-      btn.className = 'mode-btn admin-tab';
-      btn.id = 'mode-admin';
-      btn.onclick = () => setMode('admin');
-      btn.innerHTML = 'ADMIN <span class="pending-count" id="pending-count" style="display:none"></span>';
-      toggle.appendChild(btn);
+    if (currentUser.role === 'admin' && !document.getElementById('mode-admin')) {
+      const adminBtn = document.createElement('button');
+      adminBtn.className = 'mode-btn admin-tab';
+      adminBtn.id = 'mode-admin';
+      adminBtn.onclick = () => setMode('admin');
+      adminBtn.innerHTML = 'ADMIN <span class="pending-count" id="pending-count" style="display:none"></span>';
+      toggle.appendChild(adminBtn);
+
+      const monBtn = document.createElement('button');
+      monBtn.className = 'mode-btn admin-tab';
+      monBtn.id = 'mode-monitor';
+      monBtn.onclick = () => setMode('monitor');
+      monBtn.textContent = 'MONITOR';
+      toggle.appendChild(monBtn);
+
       loadPendingCount();
     }
 
@@ -738,7 +785,7 @@
 
   // ── APP MODES ──
   function setMode(mode) {
-    const modes = ['log','eod','fetch','admin'];
+    const modes = ['log','eod','fetch','admin','monitor'];
     modes.forEach(m => {
       const view = document.getElementById(`view-${m}`);
       const btn = document.getElementById(`mode-${m}`);
@@ -746,6 +793,7 @@
       if (btn) btn.classList.toggle('active', m === mode);
     });
     if (mode === 'admin') loadAdminUsers();
+    if (mode === 'monitor') setMonitorView(currentMonitorView);
   }
 
   function setCat(cat) {
@@ -1014,7 +1062,9 @@
         if (u.status === 'pending') {
           actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${uid})">APPROVE</button><button class="admin-action-btn deny" onclick="adminAction('deny',${uid})">DENY</button>`;
         } else if (u.status === 'approved' && u.role !== 'admin') {
-          actions = `<button class="admin-action-btn deny" onclick="adminAction('deny',${uid})">REVOKE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
+          actions = `<button class="admin-action-btn suspend" onclick="adminAction('suspend',${uid})">SUSPEND</button><button class="admin-action-btn deny" onclick="adminAction('deny',${uid})">REVOKE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
+        } else if (u.status === 'suspended') {
+          actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${uid})">REINSTATE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
         } else if (u.status === 'denied') {
           actions = `<button class="admin-action-btn approve" onclick="adminAction('approve',${uid})">APPROVE</button><button class="admin-action-btn delete" onclick="adminAction('delete',${uid})">DELETE</button>`;
         }
@@ -1370,6 +1420,151 @@
       setTimeout(closePwModal, 1500);
     } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
     btn.disabled = false; btn.textContent = 'UPDATE';
+  }
+
+  // ── MONITOR (admin oversight) ──
+  let currentMonitorView = 'activity';
+
+  function setMonitorView(view) {
+    currentMonitorView = view;
+    ['activity','tasks','audit','eod'].forEach(v => {
+      const btn = document.getElementById(`mon-tab-${v}`);
+      if (btn) btn.classList.toggle('active', v === view);
+    });
+    if (view === 'activity') loadUserActivity();
+    if (view === 'tasks') loadAllTasks();
+    if (view === 'audit') loadAuditLog();
+    if (view === 'eod') loadAdminEodHistory();
+  }
+
+  function showMonitorLoading() {
+    document.getElementById('monitor-content').innerHTML = '<div class="empty-state"><span class="spinner"></span> LOADING...</div>';
+  }
+
+  function showMonitorError(message) {
+    document.getElementById('monitor-content').innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(message)}</div>`;
+  }
+
+  function showMonitorEmpty(message) {
+    document.getElementById('monitor-content').innerHTML = `<div class="empty-state">// ${esc(message)} //</div>`;
+  }
+
+  function formatMonTime(isoOrSqlite) {
+    if (!isoOrSqlite) return '—';
+    const s = isoOrSqlite.includes('T') ? isoOrSqlite : isoOrSqlite.replace(' ', 'T') + 'Z';
+    return new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function actionPillClass(action) {
+    if (action.endsWith('.failure') || action === 'admin.suspend' || action === 'admin.deny' || action === 'admin.delete') return 'failure';
+    if (action.endsWith('.success') || action === 'admin.approve') return 'success';
+    return 'neutral';
+  }
+
+  async function loadUserActivity() {
+    showMonitorLoading();
+    try {
+      const res = await fetch(`${PROXY}/admin/user-activity`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.users || [];
+      if (!rows.length) return showMonitorEmpty('NO USERS');
+      const html = `<div class="mon-wrap"><table class="mon-table">
+        <thead><tr>
+          <th>USER</th><th>ROLE</th><th>STATUS</th>
+          <th class="num">TASKS</th><th class="num">EODS SENT</th>
+          <th>LAST LOGIN</th><th class="num">LOGIN FAILS</th>
+          <th>JOINED</th>
+        </tr></thead><tbody>
+        ${rows.map(u => `<tr>
+          <td><div>${esc(u.email)}</div><div class="dim">${esc(u.display_name || '')}</div></td>
+          <td>${esc(u.role)}</td>
+          <td><span class="admin-status ${esc(u.status)}">${esc(u.status)}</span></td>
+          <td class="num">${u.task_count || 0}</td>
+          <td class="num">${u.eod_sent_count || 0}</td>
+          <td class="dim">${esc(formatMonTime(u.last_login))}</td>
+          <td class="num" style="color:${u.login_failures > 5 ? 'var(--red)' : 'var(--muted)'}">${u.login_failures || 0}</td>
+          <td class="dim">${esc(formatMonTime(u.created_at))}</td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+      document.getElementById('monitor-content').innerHTML = html;
+    } catch (e) { showMonitorError(e.message); }
+  }
+
+  async function loadAllTasks() {
+    showMonitorLoading();
+    try {
+      const res = await fetch(`${PROXY}/admin/all-tasks?limit=200`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.tasks || [];
+      if (!rows.length) return showMonitorEmpty('NO TASKS');
+      const html = `<div class="mon-wrap"><table class="mon-table">
+        <thead><tr>
+          <th>WHEN</th><th>USER</th><th>CATEGORY</th><th>TEXT</th>
+        </tr></thead><tbody>
+        ${rows.map(t => `<tr>
+          <td class="dim">${esc(formatMonTime(t.created_at))}</td>
+          <td>${esc(t.user_email || '(deleted)')}</td>
+          <td class="dim">${esc(t.category)}</td>
+          <td>${esc(t.text)}</td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+      document.getElementById('monitor-content').innerHTML = html;
+    } catch (e) { showMonitorError(e.message); }
+  }
+
+  async function loadAuditLog() {
+    showMonitorLoading();
+    try {
+      const res = await fetch(`${PROXY}/admin/audit-log?limit=200`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.events || [];
+      if (!rows.length) return showMonitorEmpty('NO EVENTS');
+      const html = `<div class="mon-wrap"><table class="mon-table">
+        <thead><tr>
+          <th>WHEN</th><th>ACTION</th><th>USER</th><th>IP</th><th>DETAILS</th>
+        </tr></thead><tbody>
+        ${rows.map(e => `<tr>
+          <td class="dim">${esc(formatMonTime(e.created_at))}</td>
+          <td><span class="mon-action-pill ${actionPillClass(e.action)}">${esc(e.action)}</span></td>
+          <td>${esc(e.user_email || (e.user_id ? '(deleted)' : '—'))}</td>
+          <td class="dim">${esc(e.ip || '—')}</td>
+          <td><div class="mon-pre">${esc(e.details || '')}</div></td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+      document.getElementById('monitor-content').innerHTML = html;
+    } catch (e) { showMonitorError(e.message); }
+  }
+
+  async function loadAdminEodHistory() {
+    showMonitorLoading();
+    try {
+      const res = await fetch(`${PROXY}/admin/eod-history?limit=200`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.eods || [];
+      if (!rows.length) return showMonitorEmpty('NO EODS GENERATED YET');
+      const html = `<div class="mon-wrap"><table class="mon-table">
+        <thead><tr>
+          <th>GENERATED</th><th>USER</th><th>SUBJECT</th><th>RECIPIENTS</th><th>STATUS</th><th>SENT</th>
+        </tr></thead><tbody>
+        ${rows.map(e => {
+          const recipients = e.recipients ? (() => { try { return JSON.parse(e.recipients).join(', '); } catch { return e.recipients; } })() : '';
+          const statusCls = e.status === 'sent' ? 'success' : (e.status === 'failed' ? 'failure' : 'neutral');
+          return `<tr>
+            <td class="dim">${esc(formatMonTime(e.generated_at))}</td>
+            <td>${esc(e.user_email || '(deleted)')}</td>
+            <td>${esc(e.subject || '')}</td>
+            <td class="dim"><div class="mon-pre">${esc(recipients)}</div></td>
+            <td><span class="mon-action-pill ${statusCls}">${esc(e.status)}</span>${e.error_message ? `<div class="dim mon-pre">${esc(e.error_message)}</div>` : ''}</td>
+            <td class="dim">${esc(formatMonTime(e.sent_at))}</td>
+          </tr>`;
+        }).join('')}
+        </tbody></table></div>`;
+      document.getElementById('monitor-content').innerHTML = html;
+    } catch (e) { showMonitorError(e.message); }
   }
 
   // ── INIT ──

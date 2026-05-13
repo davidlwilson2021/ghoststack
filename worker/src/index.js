@@ -37,7 +37,14 @@ export default {
     if (path === '/admin/users' && method === 'GET') return admin.listUsers(request, env);
     if (path === '/admin/approve' && method === 'POST') return admin.approve(request, env);
     if (path === '/admin/deny' && method === 'POST') return admin.deny(request, env);
+    if (path === '/admin/suspend' && method === 'POST') return admin.suspend(request, env);
     if (path === '/admin/delete' && method === 'POST') return admin.deleteUser(request, env);
+
+    // ── Admin Monitor routes (Phase 2) ──
+    if (path === '/admin/audit-log' && method === 'GET') return admin.listAuditLog(request, env);
+    if (path === '/admin/all-tasks' && method === 'GET') return admin.listAllTasks(request, env);
+    if (path === '/admin/eod-history' && method === 'GET') return admin.listEodHistory(request, env);
+    if (path === '/admin/user-activity' && method === 'GET') return admin.getUserActivity(request, env);
 
     // ── Settings routes (Phase 2) ──
     if (path === '/settings' && method === 'GET') return settings.getSettings(request, env);
