@@ -17,6 +17,7 @@ import { getSession } from '../lib/session.js';
 import { encrypt } from '../lib/crypto.js';
 import { isValidEmail } from '../lib/validate.js';
 import { isValidProvider, getProviderInfo } from '../lib/ai/index.js';
+import { logAudit } from '../lib/audit.js';
 
 const SLACK_CHANNEL_RE = /^[A-Z0-9]{1,20}$/;
 const SCHEDULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -256,6 +257,15 @@ export async function updateSettings(request, env) {
   const final = await env.DB.prepare(
     'SELECT * FROM user_settings WHERE user_id = ?'
   ).bind(session.user_id).first();
+
+  // Record WHICH fields changed (names only — never values, since some
+  // are credentials).
+  const changedFields = Object.keys(body).filter(k => has(k));
+  await logAudit(env, request, {
+    user_id: session.user_id,
+    action: 'settings.update',
+    details: { fields: changedFields },
+  });
 
   return json({
     ok: true,

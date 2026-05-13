@@ -2,6 +2,7 @@ import { json, err } from '../lib/cors.js';
 import { hashPassword, generateToken } from '../lib/crypto.js';
 import { getSession } from '../lib/session.js';
 import { isValidEmail, escapeHtml } from '../lib/validate.js';
+import { logAudit } from '../lib/audit.js';
 
 export async function register(request, env) {
   const { email, password, displayName } = await request.json();
@@ -20,6 +21,11 @@ export async function register(request, env) {
     `INSERT INTO users (email, password_hash, display_name, role, status) VALUES (?, ?, ?, 'user', 'pending')`
   ).bind(email.toLowerCase(), hash, safeName).run();
 
+  await logAudit(env, request, {
+    action: 'auth.register',
+    details: { email: email.toLowerCase() },
+  });
+
   return json({ ok: true, message: 'Account request submitted. Awaiting admin approval.' }, 200, request);
 }
 
@@ -28,21 +34,47 @@ export async function login(request, env) {
   if (!email || !password) return err('Email and password are required', 400, request);
 
   const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email.toLowerCase()).first();
-  if (!user) return err('Invalid email or password', 401, request);
+  if (!user) {
+    await logAudit(env, request, {
+      action: 'auth.login.failure',
+      details: { email: email.toLowerCase(), reason: 'unknown_user' },
+    });
+    return err('Invalid email or password', 401, request);
+  }
 
   const salt = email.toLowerCase() + ':ghoststack';
   const hash = await hashPassword(password, salt);
-  if (hash !== user.password_hash) return err('Invalid email or password', 401, request);
+  if (hash !== user.password_hash) {
+    await logAudit(env, request, {
+      user_id: user.id,
+      action: 'auth.login.failure',
+      details: { email: user.email, reason: 'bad_password' },
+    });
+    return err('Invalid email or password', 401, request);
+  }
 
-  if (user.status === 'pending') return err('Your account is pending admin approval', 403, request);
-  if (user.status === 'denied') return err('Your account request has been denied', 403, request);
-  if (user.status === 'suspended') return err('Your account has been suspended', 403, request);
+  if (user.status !== 'approved') {
+    await logAudit(env, request, {
+      user_id: user.id,
+      action: 'auth.login.failure',
+      details: { email: user.email, reason: `status_${user.status}` },
+    });
+    if (user.status === 'pending') return err('Your account is pending admin approval', 403, request);
+    if (user.status === 'denied') return err('Your account request has been denied', 403, request);
+    if (user.status === 'suspended') return err('Your account has been suspended', 403, request);
+  }
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   await env.DB.prepare(
     'INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)'
   ).bind(token, user.id, expiresAt).run();
+
+  await logAudit(env, request, {
+    user_id: user.id,
+    action: 'auth.login.success',
+    details: { email: user.email, role: user.role },
+  });
 
   return json({
     ok: true,
@@ -63,7 +95,16 @@ export async function session(request, env) {
 export async function logout(request, env) {
   const auth = request.headers.get('Authorization');
   if (auth && auth.startsWith('Bearer ')) {
-    await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(auth.slice(7)).run();
+    const token = auth.slice(7);
+    // Resolve user_id before deletion so we can audit who logged out.
+    const row = await env.DB.prepare('SELECT user_id FROM sessions WHERE token = ?').bind(token).first();
+    await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+    if (row) {
+      await logAudit(env, request, {
+        user_id: row.user_id,
+        action: 'auth.logout',
+      });
+    }
   }
   return json({ ok: true }, 200, request);
 }
@@ -83,5 +124,12 @@ export async function changePassword(request, env) {
   const newHash = await hashPassword(newPassword, salt);
   await env.DB.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
     .bind(newHash, sess.user_id).run();
+
+  await logAudit(env, request, {
+    user_id: sess.user_id,
+    action: 'auth.password_change',
+    details: { email: sess.email },
+  });
+
   return json({ ok: true, message: 'Password updated' }, 200, request);
 }
