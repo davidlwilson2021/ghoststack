@@ -237,6 +237,8 @@
           <div class="user-menu" id="user-menu">
             <div class="user-menu-item" style="pointer-events:none;color:var(--muted);font-size:9px;" id="user-menu-role"></div>
             <div class="user-menu-sep"></div>
+            <button class="user-menu-item" onclick="event.stopPropagation();openChangePw()">Change Password</button>
+            <div class="user-menu-sep"></div>
             <button class="user-menu-item" onclick="event.stopPropagation();doLogout()">Sign Out</button>
           </div>
         </div>
@@ -335,6 +337,30 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;" onclick="if(event.target===this)closePwModal()">
+  <div class="auth-card" style="max-width:380px;">
+    <h2 style="font-family:var(--mono);font-size:14px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Change Password</h2>
+    <div id="pw-error" class="auth-error"></div>
+    <div id="pw-success" class="auth-success"></div>
+    <div class="form-group">
+      <label class="form-label">Current Password</label>
+      <input class="form-input" id="pw-current" type="password" placeholder="Enter current password" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">New Password</label>
+      <input class="form-input" id="pw-new" type="password" placeholder="Minimum 8 characters" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm New Password</label>
+      <input class="form-input" id="pw-confirm" type="password" placeholder="Confirm new password" />
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="auth-btn" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--muted);font-weight:400;" onclick="closePwModal()">CANCEL</button>
+      <button class="auth-btn" style="flex:1;" id="pw-btn" onclick="doChangePw()">UPDATE</button>
     </div>
   </div>
 </div>
@@ -709,6 +735,45 @@
       loadAdminUsers();
       loadPendingCount();
     } catch (e) { showToast(e.message, true); }
+  }
+
+  // ── CHANGE PASSWORD ──
+  function openChangePw() {
+    document.getElementById('user-menu').classList.remove('visible');
+    document.getElementById('pw-modal').style.display = 'flex';
+    document.getElementById('pw-error').style.display = 'none';
+    document.getElementById('pw-success').style.display = 'none';
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+  }
+  function closePwModal() { document.getElementById('pw-modal').style.display = 'none'; }
+  async function doChangePw() {
+    const cur = document.getElementById('pw-current').value;
+    const nw = document.getElementById('pw-new').value;
+    const conf = document.getElementById('pw-confirm').value;
+    const errEl = document.getElementById('pw-error');
+    const sucEl = document.getElementById('pw-success');
+    errEl.style.display = 'none'; sucEl.style.display = 'none';
+    if (!cur || !nw || !conf) { errEl.textContent = 'All fields are required'; errEl.style.display = 'block'; return; }
+    if (nw.length < 8) { errEl.textContent = 'New password must be at least 8 characters'; errEl.style.display = 'block'; return; }
+    if (nw !== conf) { errEl.textContent = 'New passwords do not match'; errEl.style.display = 'block'; return; }
+    const btn = document.getElementById('pw-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const res = await fetch(`${PROXY}/auth/change-password`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ currentPassword: cur, newPassword: nw })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      sucEl.textContent = 'Password updated successfully'; sucEl.style.display = 'block';
+      document.getElementById('pw-current').value = '';
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+      setTimeout(closePwModal, 1500);
+    } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+    btn.disabled = false; btn.textContent = 'UPDATE';
   }
 
   // ── INIT ──
