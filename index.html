@@ -145,6 +145,54 @@
   .admin-filter-btn { padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
   .admin-filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 
+  /* ── SETTINGS MODAL ── */
+  .settings-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
+  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 580px; margin: auto; display: flex; flex-direction: column; max-height: calc(100vh - 48px); }
+  .settings-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 12px 12px 0 0; }
+  .settings-head h2 { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; flex: 1; }
+  .settings-head button { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; padding: 0 6px; line-height: 1; }
+  .settings-head button:hover { color: var(--text); }
+  .settings-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .settings-section { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .settings-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+  .settings-section h3 { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+  .settings-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 12px; line-height: 1.5; }
+  .settings-row { margin-bottom: 10px; }
+  .settings-row label { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+  .settings-section input[type="text"], .settings-section input[type="password"], .settings-section input[type="email"], .settings-section input[type="time"], .settings-section textarea, .settings-section select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 9px 12px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+  .settings-section input:focus, .settings-section textarea:focus, .settings-section select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
+  .settings-section textarea { resize: vertical; min-height: 60px; font-family: var(--mono); }
+  .settings-section input::placeholder, .settings-section textarea::placeholder { color: #555; }
+  .key-status { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; font-family: var(--mono); font-size: 11px; }
+  .key-status .badge { padding: 2px 8px; border-radius: 3px; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+  .key-status .badge.set { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .key-status .badge.unset { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .key-status .actions { margin-left: auto; display: flex; gap: 6px; }
+  .key-status .actions button { padding: 4px 10px; border-radius: 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
+  .key-status .actions button.replace { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+  .key-status .actions button.replace:hover { background: var(--accent-dim); }
+  .key-status .actions button.clear { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .key-status .actions button.clear:hover { border-color: var(--red); color: var(--red); }
+  .recipient-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .recipient-row input { flex: 1; }
+  .recipient-row button { padding: 0 12px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 5px; cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
+  .recipient-row button:hover { border-color: var(--red); color: var(--red); }
+  .add-recipient-btn { background: transparent; border: 1px dashed var(--border); color: var(--muted); padding: 8px; border-radius: 5px; font-family: var(--mono); font-size: 11px; cursor: pointer; width: 100%; transition: all 0.15s; }
+  .add-recipient-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer; }
+  .toggle-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .toggle-row span { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .settings-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; background: var(--surface2); border-radius: 0 0 12px 12px; }
+  .settings-foot button { padding: 10px 18px; border-radius: 5px; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .settings-foot .cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .settings-foot .cancel:hover { border-color: var(--text); color: var(--text); }
+  .settings-foot .save { background: var(--accent); border: none; color: var(--bg); font-weight: 700; }
+  .settings-foot .save:hover { opacity: 0.85; }
+  .settings-foot .save:disabled { opacity: 0.4; cursor: not-allowed; }
+  .settings-msg { padding: 10px 14px; border-radius: 5px; font-family: var(--mono); font-size: 11px; margin-bottom: 14px; display: none; }
+  .settings-msg.error { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); display: block; }
+  .settings-msg.success { background: var(--green-dim); border: 1px solid var(--green); color: var(--green); display: block; }
+
   /* ── TOAST ── */
   .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); padding: 10px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateY(0); }
@@ -237,6 +285,7 @@
           <div class="user-menu" id="user-menu">
             <div class="user-menu-item" style="pointer-events:none;color:var(--muted);font-size:9px;" id="user-menu-role"></div>
             <div class="user-menu-sep"></div>
+            <button class="user-menu-item" onclick="event.stopPropagation();openSettings()">Settings</button>
             <button class="user-menu-item" onclick="event.stopPropagation();openChangePw()">Change Password</button>
             <div class="user-menu-sep"></div>
             <button class="user-menu-item" onclick="event.stopPropagation();doLogout()">Sign Out</button>
@@ -337,6 +386,90 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════ SETTINGS MODAL ════════════════════════════════════ -->
+<div class="settings-modal" id="settings-modal" style="display:none;" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-card">
+    <div class="settings-head">
+      <h2>Settings</h2>
+      <button onclick="closeSettings()" aria-label="Close">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div id="settings-loading" class="empty-state"><span class="spinner"></span> LOADING SETTINGS...</div>
+      <div id="settings-content" style="display:none;">
+        <div id="settings-msg" class="settings-msg"></div>
+
+        <section class="settings-section">
+          <h3>Claude API Key</h3>
+          <p class="settings-hint">Required for generating End-of-Day summaries. Your key is encrypted before storage and never returned to the browser. Get a key at console.anthropic.com.</p>
+          <div id="anthropic-key-row"></div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Email Template</h3>
+          <p class="settings-hint">Used when generating your Daily Work Summary. Use <code>{date}</code> for today's date and <code>{name}</code> for your display name.</p>
+          <div class="settings-row">
+            <label>Subject pattern</label>
+            <input type="text" id="tpl-subject" placeholder="Daily Summary - {date}" />
+          </div>
+          <div class="settings-row">
+            <label>Body intro</label>
+            <textarea id="tpl-intro" rows="3" placeholder="Good morning/afternoon,&#10;&#10;This is my daily summary for {date}."></textarea>
+          </div>
+          <div class="settings-row">
+            <label>Signature</label>
+            <textarea id="tpl-signature" rows="3" placeholder="V/R,&#10;{name}"></textarea>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Default Recipients</h3>
+          <p class="settings-hint">Pre-filled when you send an EOD. You can override per send. Max 20.</p>
+          <div id="recipients-list"></div>
+          <button type="button" class="add-recipient-btn" onclick="addRecipientRow('')">+ Add recipient</button>
+        </section>
+
+        <section class="settings-section">
+          <h3>Slack Integration <span style="color:var(--muted);font-weight:400;">(optional)</span></h3>
+          <p class="settings-hint">Mirror tasks to a Slack channel. Leave blank to disable. The bot must be invited to each channel.</p>
+          <div class="settings-row">
+            <label>Bot token (xoxb-...)</label>
+            <div id="slack-token-row"></div>
+          </div>
+          <div class="settings-row">
+            <label>Task log channel ID</label>
+            <input type="text" id="slack-log-channel" placeholder="C0123456789" />
+          </div>
+          <div class="settings-row">
+            <label>EOD dispatch channel ID</label>
+            <input type="text" id="slack-dispatch-channel" placeholder="C0123456789" />
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Auto-Schedule <span style="color:var(--muted);font-weight:400;">(optional)</span></h3>
+          <p class="settings-hint">Automatically generate and send the EOD daily at the configured time.</p>
+          <label class="toggle-row">
+            <input type="checkbox" id="schedule-enabled" />
+            <span>Enable auto-schedule</span>
+          </label>
+          <div class="settings-row">
+            <label>Send time (24h)</label>
+            <input type="time" id="schedule-time" />
+          </div>
+          <div class="settings-row">
+            <label>Timezone (IANA name, e.g. America/Phoenix)</label>
+            <input type="text" id="schedule-timezone" placeholder="America/Phoenix" />
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="settings-foot">
+      <button class="cancel" onclick="closeSettings()">Cancel</button>
+      <button class="save" id="settings-save-btn" onclick="saveSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -742,6 +875,204 @@
       loadAdminUsers();
       loadPendingCount();
     } catch (e) { showToast(e.message, true); }
+  }
+
+  // ── SETTINGS ──
+  let currentSettings = null;
+  let anthropicKeyReplaceMode = false;
+  let slackTokenReplaceMode = false;
+
+  function openSettings() {
+    document.getElementById('user-menu').classList.remove('visible');
+    document.getElementById('settings-modal').style.display = 'flex';
+    document.getElementById('settings-loading').style.display = 'block';
+    document.getElementById('settings-content').style.display = 'none';
+    document.getElementById('settings-msg').className = 'settings-msg';
+    document.getElementById('settings-msg').textContent = '';
+    anthropicKeyReplaceMode = false;
+    slackTokenReplaceMode = false;
+    loadSettings();
+  }
+
+  function closeSettings() {
+    document.getElementById('settings-modal').style.display = 'none';
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch(`${PROXY}/settings`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      currentSettings = data.settings;
+      renderSettings();
+      document.getElementById('settings-loading').style.display = 'none';
+      document.getElementById('settings-content').style.display = 'block';
+    } catch (e) {
+      document.getElementById('settings-loading').innerHTML = `<div style="color:var(--red)">${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderSettings() {
+    const s = currentSettings;
+    renderKeyRow('anthropic', s.has_anthropic_key, anthropicKeyReplaceMode);
+    renderKeyRow('slack', s.has_slack_token, slackTokenReplaceMode);
+    document.getElementById('slack-log-channel').value = s.slack_log_channel || '';
+    document.getElementById('slack-dispatch-channel').value = s.slack_dispatch_channel || '';
+    const tpl = s.email_template || {};
+    document.getElementById('tpl-subject').value = tpl.subject || '';
+    document.getElementById('tpl-intro').value = tpl.body_intro || '';
+    document.getElementById('tpl-signature').value = tpl.body_signature || '';
+    document.getElementById('schedule-enabled').checked = !!s.schedule_enabled;
+    document.getElementById('schedule-time').value = s.schedule_time || '';
+    document.getElementById('schedule-timezone').value = s.schedule_timezone || '';
+    renderRecipients(s.default_recipients && s.default_recipients.length ? s.default_recipients : [currentUser.email]);
+  }
+
+  function renderKeyRow(kind, hasKey, replaceMode) {
+    const containerId = kind === 'anthropic' ? 'anthropic-key-row' : 'slack-token-row';
+    const inputId = kind === 'anthropic' ? 'anthropic-key-input' : 'slack-token-input';
+    const placeholder = kind === 'anthropic' ? 'sk-ant-...' : 'xoxb-...';
+    const container = document.getElementById(containerId);
+    if (hasKey && !replaceMode) {
+      container.innerHTML = `
+        <div class="key-status">
+          <span class="badge set">SET</span>
+          <span style="color:var(--muted)">${kind === 'anthropic' ? 'Claude key' : 'Slack bot token'} is configured</span>
+          <span class="actions">
+            <button type="button" class="replace" onclick="enableReplace('${kind}')">Replace</button>
+            <button type="button" class="clear" onclick="clearKey('${kind}')">Clear</button>
+          </span>
+        </div>
+      `;
+    } else if (hasKey && replaceMode) {
+      container.innerHTML = `
+        <input type="password" id="${inputId}" placeholder="${placeholder} (enter new value)" autocomplete="off" />
+        <div class="settings-hint" style="margin-top:6px">Saving will replace the existing key.</div>
+      `;
+    } else {
+      container.innerHTML = `
+        <input type="password" id="${inputId}" placeholder="${placeholder}" autocomplete="off" />
+      `;
+    }
+  }
+
+  function enableReplace(kind) {
+    if (kind === 'anthropic') anthropicKeyReplaceMode = true;
+    else slackTokenReplaceMode = true;
+    renderKeyRow(kind, true, true);
+  }
+
+  async function clearKey(kind) {
+    const field = kind === 'anthropic' ? 'anthropic_key' : 'slack_bot_token';
+    try {
+      const res = await fetch(`${PROXY}/settings`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ [field]: '' })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      currentSettings = data.settings;
+      if (kind === 'anthropic') anthropicKeyReplaceMode = false;
+      else slackTokenReplaceMode = false;
+      renderSettings();
+      showSettingsMsg(`${kind === 'anthropic' ? 'Claude key' : 'Slack token'} cleared`, 'success');
+    } catch (e) {
+      showSettingsMsg(e.message, 'error');
+    }
+  }
+
+  function renderRecipients(list) {
+    const wrap = document.getElementById('recipients-list');
+    wrap.innerHTML = '';
+    list.forEach((email, i) => addRecipientRow(email));
+  }
+
+  function addRecipientRow(value) {
+    const wrap = document.getElementById('recipients-list');
+    const row = document.createElement('div');
+    row.className = 'recipient-row';
+    const input = document.createElement('input');
+    input.type = 'email';
+    input.placeholder = 'name@example.com';
+    input.value = value || '';
+    input.autocomplete = 'off';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.title = 'Remove recipient';
+    btn.onclick = () => row.remove();
+    row.appendChild(input);
+    row.appendChild(btn);
+    wrap.appendChild(row);
+  }
+
+  function collectRecipients() {
+    const inputs = document.querySelectorAll('#recipients-list input');
+    const out = [];
+    inputs.forEach(i => {
+      const v = i.value.trim();
+      if (v) out.push(v);
+    });
+    return out;
+  }
+
+  function showSettingsMsg(text, kind) {
+    const el = document.getElementById('settings-msg');
+    el.textContent = text;
+    el.className = 'settings-msg ' + kind;
+  }
+
+  async function saveSettings() {
+    const btn = document.getElementById('settings-save-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> SAVING';
+    showSettingsMsg('', '');
+
+    const payload = {
+      slack_log_channel: document.getElementById('slack-log-channel').value.trim() || null,
+      slack_dispatch_channel: document.getElementById('slack-dispatch-channel').value.trim() || null,
+      email_template: {
+        subject: document.getElementById('tpl-subject').value,
+        body_intro: document.getElementById('tpl-intro').value,
+        body_signature: document.getElementById('tpl-signature').value,
+      },
+      default_recipients: collectRecipients(),
+      schedule_enabled: document.getElementById('schedule-enabled').checked,
+      schedule_time: document.getElementById('schedule-time').value || null,
+      schedule_timezone: document.getElementById('schedule-timezone').value.trim() || null,
+    };
+
+    // Only include key fields if the user actually typed something (replace mode
+    // or fresh entry). An empty field when the key was already set means "no change".
+    const akInput = document.getElementById('anthropic-key-input');
+    if (akInput) {
+      const v = akInput.value;
+      if (v) payload.anthropic_key = v;
+      else if (!currentSettings.has_anthropic_key) payload.anthropic_key = '';
+    }
+    const stInput = document.getElementById('slack-token-input');
+    if (stInput) {
+      const v = stInput.value;
+      if (v) payload.slack_bot_token = v;
+      else if (!currentSettings.has_slack_token) payload.slack_bot_token = '';
+    }
+
+    try {
+      const res = await fetch(`${PROXY}/settings`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      currentSettings = data.settings;
+      anthropicKeyReplaceMode = false;
+      slackTokenReplaceMode = false;
+      renderSettings();
+      showSettingsMsg('Settings saved', 'success');
+      showToast('SETTINGS SAVED');
+    } catch (e) {
+      showSettingsMsg(e.message, 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save';
   }
 
   // ── CHANGE PASSWORD ──
