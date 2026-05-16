@@ -35,7 +35,25 @@ function interpolate(str, vars) {
   return str.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
 }
 
-function buildPrompt({ tasks, displayName, dateStr, template }) {
+function buildTaskListBlock(tasks) {
+  const byCategory = new Map();
+  for (const t of tasks) {
+    const key = t.category || 'general';
+    if (!byCategory.has(key)) byCategory.set(key, []);
+    byCategory.get(key).push(t.text);
+  }
+  const taskListLines = [];
+  for (const [key, items] of byCategory) {
+    taskListLines.push(`[${categoryLabel(key)}]`);
+    for (const text of items) {
+      taskListLines.push(`- ${text}`);
+    }
+    taskListLines.push('');
+  }
+  return taskListLines.join('\n').trim();
+}
+
+function buildEodPrompts({ tasks, displayName, dateStr, template }) {
   const vars = { date: dateStr, name: displayName };
   const subject = interpolate(
     template?.subject || 'Daily Work Summary - {name} - {date}',
@@ -49,32 +67,11 @@ function buildPrompt({ tasks, displayName, dateStr, template }) {
     template?.body_signature || 'V/R,\n{name}',
     vars
   );
+  const taskListBlock = buildTaskListBlock(tasks);
 
-  // Group tasks by category, preserving insertion order so the email
-  // sections appear in a consistent (logging) order.
-  const byCategory = new Map();
-  for (const t of tasks) {
-    const key = t.category || 'general';
-    if (!byCategory.has(key)) byCategory.set(key, []);
-    byCategory.get(key).push(t.text);
-  }
-
-  const taskListLines = [];
-  for (const [key, items] of byCategory) {
-    taskListLines.push(`[${categoryLabel(key)}]`);
-    for (const text of items) {
-      taskListLines.push(`- ${text}`);
-    }
-    taskListLines.push('');
-  }
-  const taskListBlock = taskListLines.join('\n').trim();
-
-  return `You are an assistant that writes professional End-of-Day summary emails for IT operations staff. Generate a clear, properly formatted daily summary email from the tasks below.
-
-Today's date: ${dateStr}
-
-Tasks logged today (grouped by category):
-${taskListBlock}
+  const system = `You write professional End-of-Day summary emails for IT operations staff.
+Be concise: use only the required sections, no preamble or closing notes beyond the signature.
+Return ONLY the formatted email starting with "SUBJECT:".
 
 Format the email EXACTLY as follows:
 
@@ -90,13 +87,41 @@ For each category that has tasks, output a section using this format:
 - <task one>
 - <task two>
 
-Use the category names exactly as shown in the brackets above (without the brackets). Only include categories that have tasks. Keep task wording professional but faithful to the original entries — clean up spelling and phrasing only.
+Use category names exactly as shown in brackets (without brackets). Only include categories with tasks.
+Keep task wording professional and faithful — light cleanup only.
 
-End the email with this signature, exactly as given:
+End with this signature exactly:
 
-${signature}
+${signature}`;
 
-Return ONLY the formatted email starting with "SUBJECT:" and nothing else. Do not include any explanation, preamble, or trailing notes.`;
+  const user = `Today's date: ${dateStr}
+
+Tasks logged today (grouped by category):
+${taskListBlock}`;
+
+  return { system, user };
+}
+
+async function maybeAlertHighCost(env, { estimated_cost_usd, model, user_id, action }) {
+  if (!estimated_cost_usd || estimated_cost_usd < 5) return;
+  console.warn(`High AI cost: $${estimated_cost_usd.toFixed(2)} model=${model} user=${user_id} action=${action}`);
+  const channel = env.COST_ALERT_SLACK_CHANNEL;
+  if (!channel || !env.SLACK_BOT_TOKEN) return;
+  try {
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
+      },
+      body: JSON.stringify({
+        channel,
+        text: `:warning: GhostStack AI cost alert: $${estimated_cost_usd.toFixed(2)} (${model}, ${action}, user ${user_id})`,
+      }),
+    });
+  } catch (e) {
+    console.warn('cost alert slack failed:', e?.message);
+  }
 }
 
 export async function generateEod(request, env) {
@@ -147,7 +172,7 @@ export async function generateEod(request, env) {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  const prompt = buildPrompt({
+  const { system, user } = buildEodPrompts({
     tasks,
     displayName: session.display_name,
     dateStr,
@@ -160,27 +185,41 @@ export async function generateEod(request, env) {
       provider: settings.ai_provider || 'anthropic',
       apiKey,
       model: settings.ai_model,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: user }],
+      system,
+      env,
     });
   } catch (e) {
     return err(`AI request failed: ${e.message}`, 502, request);
   }
 
+  const auditDetails = {
+    tasks_count: tasks.length,
+    provider: settings.ai_provider,
+    requested_model: settings.ai_model,
+    model: result.model,
+    estimated_cost_usd: result.estimated_cost_usd,
+    ...(result.usage || {}),
+  };
+
   await logAudit(env, request, {
     user_id: session.user_id,
     action: 'eod.generate',
-    details: {
-      tasks_count: tasks.length,
-      provider: settings.ai_provider,
-      model: settings.ai_model,
-    },
+    details: auditDetails,
+  });
+
+  await maybeAlertHighCost(env, {
+    estimated_cost_usd: result.estimated_cost_usd,
+    model: result.model,
+    user_id: session.user_id,
+    action: 'eod.generate',
   });
 
   return json({
     ok: true,
     draft: result.text,
     provider: settings.ai_provider,
-    model: settings.ai_model,
+    model: result.model,
     tasks_count: tasks.length,
     generated_at: new Date().toISOString(),
   }, 200, request);

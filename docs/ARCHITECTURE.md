@@ -2,6 +2,14 @@
 
 This document explains how GhostStack is built — what each component does, how they talk to each other, and why each piece exists.
 
+## AI cost controls
+
+EOD generation uses Anthropic **Sonnet or Haiku only** in production (`ALLOWED_MODELS` in `worker/src/lib/ai/anthropic.js`). Opus is blocked unless the Worker secret `ALLOW_OPUS=true` is set for development.
+
+- **Prompt caching:** Static EOD formatting rules are sent in a cached `system` block; daily tasks stay in the user message. Changing the email template invalidates cache benefit until the system text stabilizes again.
+- **Audit log:** Each `eod.generate` and legacy `proxy.claude` call records `estimated_cost_usd` and token counts (not prompt content).
+- **Alerts:** Optional `COST_ALERT_SLACK_CHANNEL` + `SLACK_BOT_TOKEN` posts to Slack when a single call estimates above $5.
+
 ## System Overview
 
 ```

@@ -5,6 +5,8 @@
 
 import { corsHeaders, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
+import { generate } from '../lib/ai/anthropic.js';
+import { logAudit } from '../lib/audit.js';
 
 export async function logToSlack(request, env) {
   const session = await getSession(env.DB, request);
@@ -43,18 +45,34 @@ export async function callClaude(request, env) {
   if (!session) return err('Authentication required', 401, request);
 
   const body = await request.json();
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+    return err('messages must be a non-empty array', 400, request);
+  }
+
+  let result;
+  try {
+    result = await generate({
+      apiKey: env.ANTHROPIC_API_KEY,
+      model: body.model,
       messages: body.messages,
-    }),
+      env,
+    });
+  } catch (e) {
+    return err(e.message, 502, request);
+  }
+
+  await logAudit(env, request, {
+    user_id: session.user_id,
+    action: 'proxy.claude',
+    details: {
+      model: result.model,
+      requested_model: body.model,
+      estimated_cost_usd: result.estimated_cost_usd,
+      ...(result.usage || {}),
+    },
   });
-  return new Response(res.body, { headers: { ...corsHeaders(request), 'Content-Type': 'application/json' } });
+
+  return new Response(JSON.stringify(result.raw), {
+    headers: { ...corsHeaders(request), 'Content-Type': 'application/json' },
+  });
 }
