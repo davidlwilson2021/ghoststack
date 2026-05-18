@@ -13,3 +13,5 @@ migrations_dir = "migrations"
 
 [vars]
 CORS_ORIGIN = "https://ghoststack.pages.dev"
+SLACK_LOG_CHANNEL = "C0B0YHKH4QM"
+SLACK_DISPATCH_CHANNEL = "C0B0LGLTLJK"

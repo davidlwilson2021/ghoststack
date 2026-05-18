@@ -5,21 +5,17 @@
 
 import { corsHeaders, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
+import { postSlackMessage } from '../lib/slack.js';
 
 export async function logToSlack(request, env) {
   const session = await getSession(env.DB, request);
   if (!session) return err('Authentication required', 401, request);
 
   const body = await request.json();
-  const res = await fetch('https://slack.com/api/chat.postMessage', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.SLACK_BOT_TOKEN}`,
-    },
-    body: JSON.stringify({ channel: body.channel, text: body.text }),
+  const slack = await postSlackMessage(env, body.channel, body.text);
+  return new Response(JSON.stringify(slack), {
+    headers: { ...corsHeaders(request), 'Content-Type': 'application/json' },
   });
-  return new Response(res.body, { headers: { ...corsHeaders(request), 'Content-Type': 'application/json' } });
 }
 
 export async function fetchHistory(request, env) {

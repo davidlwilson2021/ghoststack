@@ -325,7 +325,7 @@
     <div id="view-log">
       <div class="panel">
         <div class="panel-header">
-          <span>Task Logger</span><span class="ch">→ D1</span>
+          <span>Task Logger</span><span class="ch">→ D1 → Slack</span>
           <span class="proxy-badge">CF WORKER</span>
         </div>
         <div class="panel-body">
@@ -365,6 +365,7 @@
           <div class="output-box" id="output-box"></div>
           <div class="output-actions">
             <button class="copy-btn" onclick="copyOutput()">COPY</button>
+            <button class="post-btn" onclick="postToSlack()" id="post-btn">POST TO DISPATCH</button>
             <button class="post-btn" onclick="openSendModal()" id="send-btn">SEND EMAIL</button>
           </div>
           <div class="timestamp" id="gen-timestamp"></div>
@@ -803,10 +804,15 @@
   }
 
   // ── TASK LOGGING ──
-  // D1 is the source of truth for tasks. The EOD generator reads from D1,
-  // so no Slack mirror is needed. Users who want their tasks mirrored to
-  // a Slack channel can configure their per-user Slack token in Settings
-  // and a future step will wire up that mirror.
+  // D1 is the source of truth; mirror to Slack via /log for channel visibility.
+  function slackLogChannel() {
+    return (currentSettings && currentSettings.slack_log_channel) || LOG_CHANNEL;
+  }
+
+  function slackDispatchChannel() {
+    return (currentSettings && currentSettings.slack_dispatch_channel) || DISPATCH_CHANNEL;
+  }
+
   async function logTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
@@ -823,7 +829,14 @@
       localTasks.unshift(data.task);
       renderFeed();
       input.value = '';
-      showToast('TASK LOGGED');
+      const slack = data.slack;
+      if (slack && !slack.ok && !slack.skipped) {
+        showToast('TASK SAVED — SLACK FAILED: ' + (slack.error || 'unknown'), true);
+      } else if (slack && slack.ok) {
+        showToast('TASK LOGGED TO SLACK');
+      } else {
+        showToast('TASK LOGGED');
+      }
     } catch (e) { showToast('POST FAILED: ' + e.message, true); }
     btn.disabled = false; btn.textContent = 'POST';
   }
@@ -1019,6 +1032,25 @@
 
   function copyOutput() {
     navigator.clipboard.writeText(generatedDraft).then(() => showToast('COPIED TO CLIPBOARD'));
+  }
+
+  async function postToSlack() {
+    if (!generatedDraft) return;
+    const btn = document.getElementById('post-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> POSTING...';
+    const channel = slackDispatchChannel();
+    try {
+      const res = await fetch(`${PROXY}/log`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ channel, text: generatedDraft })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Slack post failed');
+      showToast('POSTED TO DISPATCH CHANNEL');
+    } catch (e) {
+      showToast('SLACK POST FAILED: ' + e.message, true);
+    }
+    btn.disabled = false; btn.textContent = 'POST TO DISPATCH';
   }
 
   // ── ADMIN ──
