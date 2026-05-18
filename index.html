@@ -813,6 +813,19 @@
     return (currentSettings && currentSettings.slack_dispatch_channel) || DISPATCH_CHANNEL;
   }
 
+  function formatSlackMirrorText(text) {
+    return `[${catLabels[currentCat].toUpperCase()}] ${text}`;
+  }
+
+  async function mirrorTaskViaLog(channel, mirrorText) {
+    const res = await fetch(`${PROXY}/log`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ channel, text: mirrorText }),
+    });
+    return res.json();
+  }
+
   async function logTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
@@ -829,7 +842,20 @@
       localTasks.unshift(data.task);
       renderFeed();
       input.value = '';
-      const slack = data.slack;
+      const channel = slackLogChannel();
+      const mirrorText = formatSlackMirrorText(text);
+      let slack = data.slack;
+
+      // Server mirror (new Worker). If absent or failed, fall back to POST /log
+      // so Slack works even before `wrangler deploy` updates the Worker.
+      if (!slack?.ok) {
+        try {
+          slack = await mirrorTaskViaLog(channel, mirrorText);
+        } catch (e) {
+          slack = { ok: false, error: e.message };
+        }
+      }
+
       if (slack && !slack.ok && !slack.skipped) {
         showToast('TASK SAVED — SLACK FAILED: ' + (slack.error || 'unknown'), true);
       } else if (slack && slack.ok) {
