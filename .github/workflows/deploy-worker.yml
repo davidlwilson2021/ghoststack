@@ -1,5 +1,8 @@
 name: Deploy Worker
 
+# Requires repo secret: CLOUDFLARE_API_TOKEN (Workers Scripts:Edit).
+# Worker secret (set once locally): npx wrangler secret put SLACK_BOT_TOKEN
+
 on:
   push:
     branches: [main]
@@ -19,3 +22,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: worker
+          command: deploy
+      - name: Verify deployment
+        run: |
+          curl -fsS "https://ghoststack-proxy.greyhawkdiesel.workers.dev/version" | tee version.json
+          grep -q 'slack-mirror-v3' version.json
