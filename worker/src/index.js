@@ -5,8 +5,9 @@
 // This file is intentionally thin: dispatch by path + method, nothing
 // else.
 
-import { corsHeaders, err } from './lib/cors.js';
+import { corsHeaders, err, json } from './lib/cors.js';
 import { seedAdmin } from './lib/seed.js';
+import { BUILD_ID } from './lib/build.js';
 import * as auth from './routes/auth.js';
 import * as admin from './routes/admin.js';
 import * as settings from './routes/settings.js';
@@ -25,6 +26,14 @@ export default {
     const method = request.method;
 
     await seedAdmin(env.DB, env);
+
+    if (path === '/version' && method === 'GET') {
+      return json({
+        ok: true,
+        build: BUILD_ID,
+        features: { serverSlackMirror: true },
+      }, 200, request);
+    }
 
     // ── Auth routes ──
     if (path === '/auth/register' && method === 'POST') return auth.register(request, env);
@@ -45,6 +54,7 @@ export default {
     if (path === '/admin/all-tasks' && method === 'GET') return admin.listAllTasks(request, env);
     if (path === '/admin/eod-history' && method === 'GET') return admin.listEodHistory(request, env);
     if (path === '/admin/user-activity' && method === 'GET') return admin.getUserActivity(request, env);
+    if (path === '/admin/slack-status' && method === 'GET') return admin.slackStatus(request, env);
 
     // ── Settings routes (Phase 2) ──
     if (path === '/settings' && method === 'GET') return settings.getSettings(request, env);

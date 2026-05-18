@@ -1,6 +1,8 @@
 import { json, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
 import { logAudit } from '../lib/audit.js';
+import { BUILD_ID } from '../lib/build.js';
+import { postSlackMessage } from '../lib/slack.js';
 
 export async function listUsers(request, env) {
   const session = await getSession(env.DB, request);
@@ -232,4 +234,45 @@ export async function getUserActivity(request, env) {
   });
 
   return json({ ok: true, users: result.results }, 200, request);
+}
+
+export async function slackStatus(request, env) {
+  const session = await getSession(env.DB, request);
+  if (!session || session.role !== 'admin') return err('Admin access required', 403, request);
+
+  const hasToken = !!env.SLACK_BOT_TOKEN;
+  const logChannel = env.SLACK_LOG_CHANNEL || null;
+  let auth = null;
+  if (hasToken) {
+    const res = await fetch('https://slack.com/api/auth.test', {
+      headers: { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}` },
+    });
+    const payload = await res.json();
+    auth = {
+      ok: !!payload.ok,
+      error: payload.error || null,
+      team: payload.team || null,
+      user: payload.user || null,
+    };
+  }
+
+  const url = new URL(request.url);
+  let postTest = null;
+  if (url.searchParams.get('probe') === '1' && hasToken && auth?.ok && logChannel) {
+    postTest = await postSlackMessage(
+      env,
+      logChannel,
+      `GhostStack Slack probe ${new Date().toISOString()}`
+    );
+  }
+
+  return json({
+    ok: true,
+    build: BUILD_ID,
+    hasToken,
+    logChannel,
+    dispatchChannel: env.SLACK_DISPATCH_CHANNEL || null,
+    auth,
+    postTest,
+  }, 200, request);
 }
