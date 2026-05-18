@@ -799,7 +799,7 @@
       return;
     }
     el.textContent =
-      'Worker not updated (GET /version missing). Minimum fix: cd worker && npx wrangler secret put SLACK_BOT_TOKEN. Full fix: also npx wrangler deploy. GitHub CI needs CLOUDFLARE_API_TOKEN secret.';
+      'Worker not updated (GET /version missing). For Slack via Pages: Cloudflare → Pages → ghoststack → Settings → Variables → add SLACK_BOT_TOKEN, and bind D1 database ghoststack-auth as DB. Or: cd worker && npx wrangler secret put SLACK_BOT_TOKEN && npx wrangler deploy.';
   }
 
   // ── USER MENU ──
@@ -857,21 +857,31 @@
   }
 
   async function mirrorTaskViaLog(channel, mirrorText) {
-    const res = await fetch(`${PROXY}/log`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ channel, text: mirrorText }),
-    });
-    const raw = await res.text();
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return {
-        ok: false,
-        error: res.ok ? 'invalid_response' : `http_${res.status}`,
-        detail: raw.slice(0, 120),
-      };
+    // Pages Function /log deploys with the dashboard; Worker /log is fallback.
+    const endpoints = [`${window.location.origin}/log`, `${PROXY}/log`];
+    let last = { ok: false, error: 'no_endpoint' };
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ channel, text: mirrorText }),
+        });
+        const raw = await res.text();
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          last = { ok: false, error: res.ok ? 'invalid_response' : `http_${res.status}`, detail: raw.slice(0, 120) };
+          continue;
+        }
+        if (data.ok) return data;
+        last = data;
+      } catch (e) {
+        last = { ok: false, error: e.message };
+      }
     }
+    return last;
   }
 
   async function logTask() {

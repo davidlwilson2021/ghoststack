@@ -1,0 +1,14 @@
+# Cloudflare Pages (repo root) — binds D1 + vars for Pages Functions.
+# The API Worker is deployed separately from worker/wrangler.toml.
+
+name = "ghoststack"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ghoststack-auth"
+database_id = "f0986b1a-b903-407d-8040-25a18a1e7baf"
+
+[vars]
+SLACK_LOG_CHANNEL = "C0B0YHKH4QM"
