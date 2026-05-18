@@ -9,6 +9,7 @@
 
 import { json, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
+import { mirrorTaskToSlack } from '../lib/slack.js';
 
 const MAX_TASK_TEXT = 5000;
 const MAX_CATEGORY = 50;
@@ -43,7 +44,13 @@ export async function createTask(request, env) {
      RETURNING id, category, text, source, created_at`
   ).bind(session.user_id, category, text).first();
 
-  return json({ ok: true, task: row }, 200, request);
+  const slack = await mirrorTaskToSlack(env, {
+    userId: session.user_id,
+    category,
+    text,
+  });
+
+  return json({ ok: true, task: row, slack }, 200, request);
 }
 
 export async function listTasks(request, env) {
