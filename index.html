@@ -406,6 +406,7 @@
           </div>
           <div class="admin-slack-row" style="margin-bottom:14px;padding:12px;border:1px solid var(--border);border-radius:6px;">
             <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px;">SLACK INTEGRATION</div>
+            <p id="slack-deploy-hint" style="font-size:11px;font-family:var(--mono);color:var(--accent);line-height:1.5;margin:0 0 10px;"></p>
             <button class="copy-btn" type="button" onclick="checkSlackStatus()">CHECK SLACK</button>
             <button class="post-btn" type="button" onclick="probeSlack()" style="margin-left:8px;">POST TEST MESSAGE</button>
             <pre id="slack-status-out" style="margin-top:10px;font-size:10px;white-space:pre-wrap;color:var(--muted);max-height:120px;overflow:auto;"></pre>
@@ -602,6 +603,7 @@
   let localTasks = [];
   let generatedDraft = '';
   let adminFilter = 'all';
+  let workerBuild = null;
 
   const catLabels = {
     tier2: 'Obj 1 – Tier 2 Sys Admin',
@@ -778,6 +780,26 @@
     }
 
     loadTodaysTasks();
+    if (currentUser.role === 'admin') refreshSlackDeployHint();
+  }
+
+  async function refreshSlackDeployHint() {
+    const el = document.getElementById('slack-deploy-hint');
+    if (!el) return;
+    try {
+      const res = await fetch(`${PROXY}/version`);
+      const data = await res.json();
+      workerBuild = data.ok ? data.build : null;
+    } catch {
+      workerBuild = null;
+    }
+    if (workerBuild) {
+      el.style.color = 'var(--muted)';
+      el.textContent = 'Worker build: ' + workerBuild + ' — use CHECK SLACK to verify token and channel.';
+      return;
+    }
+    el.textContent =
+      'Worker not updated (GET /version missing). Minimum fix: cd worker && npx wrangler secret put SLACK_BOT_TOKEN. Full fix: also npx wrangler deploy. GitHub CI needs CLOUDFLARE_API_TOKEN secret.';
   }
 
   // ── USER MENU ──
@@ -799,7 +821,7 @@
       if (view) view.style.display = m === mode ? 'block' : 'none';
       if (btn) btn.classList.toggle('active', m === mode);
     });
-    if (mode === 'admin') loadAdminUsers();
+    if (mode === 'admin') { refreshSlackDeployHint(); loadAdminUsers(); }
     if (mode === 'monitor') setMonitorView(currentMonitorView);
   }
 
