@@ -404,6 +404,12 @@
             <button class="admin-filter-btn" onclick="setAdminFilter('denied')">DENIED</button>
             <button class="admin-filter-btn" onclick="setAdminFilter('suspended')">SUSPENDED</button>
           </div>
+          <div class="admin-slack-row" style="margin-bottom:14px;padding:12px;border:1px solid var(--border);border-radius:6px;">
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px;">SLACK INTEGRATION</div>
+            <button class="copy-btn" type="button" onclick="checkSlackStatus()">CHECK SLACK</button>
+            <button class="post-btn" type="button" onclick="probeSlack()" style="margin-left:8px;">POST TEST MESSAGE</button>
+            <pre id="slack-status-out" style="margin-top:10px;font-size:10px;white-space:pre-wrap;color:var(--muted);max-height:120px;overflow:auto;"></pre>
+          </div>
           <div id="admin-users-list">
             <div class="empty-state"><span class="spinner"></span> LOADING USERS...</div>
           </div>
@@ -817,6 +823,17 @@
     return `[${catLabels[currentCat].toUpperCase()}] ${text}`;
   }
 
+  function slackErrorHint(code) {
+    const hints = {
+      invalid_auth: 'Update SLACK_BOT_TOKEN in Cloudflare → ghoststack-proxy → Settings → Secrets.',
+      not_in_channel: 'In Slack, run /invite @ghostbot in your log channel.',
+      missing_bot_token: 'Run: cd worker && npx wrangler secret put SLACK_BOT_TOKEN',
+      channel_not_found: 'Check the log channel ID (C0B0YHKH4QM) in Settings.',
+      missing_scope: 'Add chat:write in the Slack app, reinstall to workspace.',
+    };
+    return hints[code] || 'Verify SLACK_BOT_TOKEN, chat:write scope, and bot channel membership.';
+  }
+
   async function mirrorTaskViaLog(channel, mirrorText) {
     const res = await fetch(`${PROXY}/log`, {
       method: 'POST',
@@ -857,7 +874,8 @@
       }
 
       if (slack && !slack.ok && !slack.skipped) {
-        showToast('TASK SAVED — SLACK FAILED: ' + (slack.error || 'unknown'), true);
+        const hint = slackErrorHint(slack.error);
+        showToast('SLACK FAILED: ' + (slack.error || 'unknown') + ' — ' + hint, true);
       } else if (slack && slack.ok) {
         showToast('TASK LOGGED TO SLACK');
       } else {
@@ -1080,6 +1098,36 @@
   }
 
   // ── ADMIN ──
+  async function checkSlackStatus() {
+    const out = document.getElementById('slack-status-out');
+    if (!out) return;
+    out.textContent = 'Checking...';
+    try {
+      const res = await fetch(`${PROXY}/admin/slack-status`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      out.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      out.textContent = 'Error: ' + e.message + '\n\nIf /admin/slack-status is missing, deploy the Worker (see GitHub Actions or wrangler deploy).';
+    }
+  }
+
+  async function probeSlack() {
+    const out = document.getElementById('slack-status-out');
+    if (!out) return;
+    out.textContent = 'Posting probe message...';
+    try {
+      const res = await fetch(`${PROXY}/admin/slack-status?probe=1`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      out.textContent = JSON.stringify(data, null, 2);
+      if (data.postTest?.ok) showToast('PROBE POSTED TO SLACK');
+      else if (data.postTest) showToast('PROBE FAILED: ' + (data.postTest.error || 'unknown'), true);
+    } catch (e) {
+      out.textContent = 'Error: ' + e.message;
+    }
+  }
+
   async function loadPendingCount() {
     try {
       const res = await fetch(`${PROXY}/admin/users?status=pending`, { headers: authHeaders() });
