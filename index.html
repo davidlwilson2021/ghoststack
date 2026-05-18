@@ -840,7 +840,16 @@
       headers: authHeaders(),
       body: JSON.stringify({ channel, text: mirrorText }),
     });
-    return res.json();
+    const raw = await res.text();
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {
+        ok: false,
+        error: res.ok ? 'invalid_response' : `http_${res.status}`,
+        detail: raw.slice(0, 120),
+      };
+    }
   }
 
   async function logTask() {
