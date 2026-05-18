@@ -786,6 +786,13 @@
   async function refreshSlackDeployHint() {
     const el = document.getElementById('slack-deploy-hint');
     if (!el) return;
+    let pages = null;
+    try {
+      const hres = await fetch(`${window.location.origin}/api/health`);
+      pages = await hres.json();
+    } catch {
+      pages = null;
+    }
     try {
       const res = await fetch(`${PROXY}/version`);
       const data = await res.json();
@@ -793,13 +800,22 @@
     } catch {
       workerBuild = null;
     }
-    if (workerBuild) {
-      el.style.color = 'var(--muted)';
-      el.textContent = 'Worker build: ' + workerBuild + ' — use CHECK SLACK to verify token and channel.';
-      return;
+
+    const parts = [];
+    if (pages?.ok) {
+      parts.push(
+        'Pages /log: live'
+        + (pages.hasSlackToken ? ', token OK' : ', MISSING SLACK_BOT_TOKEN on Pages project')
+        + (pages.hasD1 ? ', D1 OK' : ', MISSING D1 binding (ghoststack-auth as DB)')
+      );
+    } else {
+      parts.push('Pages /api/health not reachable — wait for deploy or check Pages build');
     }
-    el.textContent =
-      'Worker not updated (GET /version missing). For Slack via Pages: Cloudflare → Pages → ghoststack → Settings → Variables → add SLACK_BOT_TOKEN, and bind D1 database ghoststack-auth as DB. Or: cd worker && npx wrangler secret put SLACK_BOT_TOKEN && npx wrangler deploy.';
+    if (workerBuild) parts.push('Worker: ' + workerBuild);
+    else parts.push('Worker: not deployed (optional if Pages token is set)');
+
+    el.style.color = (pages?.hasSlackToken && pages?.hasD1) ? 'var(--muted)' : 'var(--accent)';
+    el.textContent = parts.join(' · ');
   }
 
   // ── USER MENU ──
