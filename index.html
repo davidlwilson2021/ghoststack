@@ -786,39 +786,35 @@
   async function refreshSlackDeployHint() {
     const el = document.getElementById('slack-deploy-hint');
     if (!el) return;
-    let pages = null;
+    let health = null;
     try {
       const hres = await fetch(`${window.location.origin}/api/health`);
-      pages = await hres.json();
+      health = await hres.json();
     } catch {
-      pages = null;
+      health = null;
     }
-    try {
-      const res = await fetch(`${PROXY}/version`);
-      const data = await res.json();
-      workerBuild = data.ok ? data.build : null;
-    } catch {
-      workerBuild = null;
-    }
+    workerBuild = health?.worker?.build || null;
 
     const parts = [];
-    if (pages?.ok) {
-      const tokenOk = pages.hasPlatformSlackToken || pages.hasMasterKey;
-      parts.push(
-        'Pages /log: live'
-        + (pages.hasPlatformSlackToken ? ', platform token OK' : ', no SLACK_BOT_TOKEN on Pages')
-        + (pages.hasMasterKey ? ', MASTER_KEY OK (use Settings → Slack token)' : ', no MASTER_KEY on Pages')
-        + (tokenOk ? '' : ' → FIX: add SLACK_BOT_TOKEN on Pages OR MASTER_KEY + save token in Settings')
-        + (pages.hasD1 ? ', D1 OK' : ', MISSING D1 binding')
-      );
+    if (health?.ok) {
+      const w = health.worker;
+      const p = health.pages;
+      if (health.slackReady) {
+        parts.push('Slack: ready'
+          + (w?.hasSlackToken ? ' (Worker token)' : '')
+          + (p?.hasPlatformSlackToken ? ' (Pages token)' : '')
+          + (p?.hasMasterKey || w?.hasMasterKey ? ', Settings token supported' : ''));
+      } else {
+        parts.push('Slack: not configured — add SLACK_BOT_TOKEN on Worker (ghoststack-proxy) or Pages');
+      }
+      if (p?.hasD1) parts.push('Pages D1 OK');
+      if (w?.reachable === false) parts.push('Worker: deploy for latest features');
+      else if (w?.build) parts.push('Worker build: ' + w.build);
     } else {
-      parts.push('Pages /api/health not reachable — wait for deploy or check Pages build');
+      parts.push('Health check unavailable — wait for Pages deploy');
     }
-    if (workerBuild) parts.push('Worker: ' + workerBuild);
-    else parts.push('Worker: not deployed (optional if Pages token is set)');
 
-    const pagesReady = pages?.hasD1 && (pages?.hasPlatformSlackToken || pages?.hasMasterKey);
-    el.style.color = pagesReady ? 'var(--muted)' : 'var(--accent)';
+    el.style.color = health?.slackReady ? 'var(--muted)' : 'var(--accent)';
     el.textContent = parts.join(' · ');
   }
 
@@ -878,7 +874,8 @@
 
   async function mirrorTaskViaLog(channel, mirrorText) {
     // Pages Function /log deploys with the dashboard; Worker /log is fallback.
-    const endpoints = [`${window.location.origin}/log`, `${PROXY}/log`];
+    // Worker first — production token is usually on ghoststack-proxy, not Pages.
+    const endpoints = [`${PROXY}/log`, `${window.location.origin}/log`];
     let last = { ok: false, error: 'no_endpoint' };
     for (const url of endpoints) {
       try {
