@@ -178,6 +178,14 @@ npx wrangler deploy
 
 Worker secrets (`SLACK_BOT_TOKEN`, `ANTHROPIC_API_KEY`) are configured via `wrangler secret put` and live encrypted in Cloudflare. They are never visible after being set.
 
+**GitHub Actions (optional):** Push to `main` under `worker/` auto-deploys when the repo secret `CLOUDFLARE_API_TOKEN` is set (Cloudflare dashboard → API Tokens → **Edit Cloudflare Workers** template). Add it:
+
+```bash
+gh secret set CLOUDFLARE_API_TOKEN --repo davidlwilson2021/ghoststack
+```
+
+Then trigger a deploy from the Actions tab (**Deploy Worker** → **Run workflow**) or push a change under `worker/`.
+
 ---
 
 ## Documentation
