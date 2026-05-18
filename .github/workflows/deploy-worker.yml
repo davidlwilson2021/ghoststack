@@ -18,11 +18,29 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - name: Install Wrangler
+        working-directory: worker
+        run: npm install
+      - name: Verify Cloudflare API token
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: e9c5a793d46fd751dcb9e3b65620cb06
+          workingDirectory: worker
+          wranglerVersion: "4"
+          command: whoami
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: e9c5a793d46fd751dcb9e3b65620cb06
           workingDirectory: worker
+          wranglerVersion: "4"
           command: deploy
       - name: Verify deployment
         run: |
