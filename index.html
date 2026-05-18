@@ -803,10 +803,13 @@
 
     const parts = [];
     if (pages?.ok) {
+      const tokenOk = pages.hasPlatformSlackToken || pages.hasMasterKey;
       parts.push(
         'Pages /log: live'
-        + (pages.hasSlackToken ? ', token OK' : ', MISSING SLACK_BOT_TOKEN on Pages project')
-        + (pages.hasD1 ? ', D1 OK' : ', MISSING D1 binding (ghoststack-auth as DB)')
+        + (pages.hasPlatformSlackToken ? ', platform token OK' : ', no SLACK_BOT_TOKEN on Pages')
+        + (pages.hasMasterKey ? ', MASTER_KEY OK (use Settings → Slack token)' : ', no MASTER_KEY on Pages')
+        + (tokenOk ? '' : ' → FIX: add SLACK_BOT_TOKEN on Pages OR MASTER_KEY + save token in Settings')
+        + (pages.hasD1 ? ', D1 OK' : ', MISSING D1 binding')
       );
     } else {
       parts.push('Pages /api/health not reachable — wait for deploy or check Pages build');
@@ -814,7 +817,8 @@
     if (workerBuild) parts.push('Worker: ' + workerBuild);
     else parts.push('Worker: not deployed (optional if Pages token is set)');
 
-    el.style.color = (pages?.hasSlackToken && pages?.hasD1) ? 'var(--muted)' : 'var(--accent)';
+    const pagesReady = pages?.hasD1 && (pages?.hasPlatformSlackToken || pages?.hasMasterKey);
+    el.style.color = pagesReady ? 'var(--muted)' : 'var(--accent)';
     el.textContent = parts.join(' · ');
   }
 

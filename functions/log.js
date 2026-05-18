@@ -1,6 +1,5 @@
 // Cloudflare Pages Function — POST /log (Slack mirror).
-// Deploys with ghoststack.pages.dev on every git push. Set SLACK_BOT_TOKEN
-// and bind D1 (DB) on the Pages project in the Cloudflare dashboard.
+import { resolveSlackBotToken } from './lib/slack-token.js';
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -32,6 +31,15 @@ async function getSession(db, request) {
   return row;
 }
 
+async function resolveChannel(db, userId, bodyChannel, env) {
+  if (bodyChannel) return bodyChannel;
+  const row = await db
+    .prepare('SELECT slack_log_channel FROM user_settings WHERE user_id = ?')
+    .bind(userId)
+    .first();
+  return row?.slack_log_channel || env.SLACK_LOG_CHANNEL || null;
+}
+
 export async function onRequestOptions(context) {
   return new Response(null, { status: 204, headers: corsHeaders(context.request) });
 }
@@ -55,9 +63,16 @@ export async function onRequestPost(context) {
     });
   }
 
-  if (!env.SLACK_BOT_TOKEN) {
+  const creds = await resolveSlackBotToken(env, env.DB, session.user_id);
+  if (!creds?.token) {
     return new Response(
-      JSON.stringify({ ok: false, skipped: true, error: 'missing_bot_token', source: 'pages-function' }),
+      JSON.stringify({
+        ok: false,
+        skipped: true,
+        error: 'missing_bot_token',
+        hint: 'Add SLACK_BOT_TOKEN on the Pages project, or set MASTER_KEY on Pages and save your xoxb token under Settings.',
+        source: 'pages-function',
+      }),
       { headers }
     );
   }
@@ -69,7 +84,7 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({ ok: false, error: 'Invalid JSON body' }), { status: 400, headers });
   }
 
-  const channel = body?.channel;
+  const channel = await resolveChannel(env.DB, session.user_id, body?.channel, env);
   const text = body?.text;
   if (!channel || !text) {
     return new Response(JSON.stringify({ ok: false, error: 'channel and text required' }), {
@@ -82,7 +97,7 @@ export async function onRequestPost(context) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
+      Authorization: `Bearer ${creds.token}`,
     },
     body: JSON.stringify({ channel, text }),
   });
@@ -93,6 +108,7 @@ export async function onRequestPost(context) {
       ok: !!payload.ok,
       error: payload.error || null,
       channel,
+      tokenSource: creds.source,
       source: 'pages-function',
     }),
     { headers }
