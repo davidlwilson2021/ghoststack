@@ -27,6 +27,16 @@ export default {
 
     await seedAdmin(env.DB, env);
 
+    if (path === '/health' && method === 'GET') {
+      return json({
+        ok: true,
+        build: BUILD_ID,
+        hasSlackToken: !!env.SLACK_BOT_TOKEN,
+        hasMasterKey: !!env.MASTER_KEY,
+        slackLogChannel: env.SLACK_LOG_CHANNEL || null,
+      }, 200, request);
+    }
+
     if (path === '/version' && method === 'GET') {
       return json({
         ok: true,
