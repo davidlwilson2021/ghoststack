@@ -1,0 +1,30 @@
+# GhostStack — local dev secrets template
+# Copy this file to .dev.vars and fill in real values.
+# .dev.vars is gitignored and safe for real secrets.
+# Used by: npx wrangler dev
+#
+# For production, set each secret via: npx wrangler secret put <NAME>
+#
+# Generate MASTER_KEY:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# ── Admin seed ──────────────────────────────────────────────────────────────
+ADMIN_EMAIL=your-admin@example.com
+ADMIN_PASSWORD=change-me-to-something-strong
+
+# ── Encryption ──────────────────────────────────────────────────────────────
+MASTER_KEY=REPLACE_WITH_32_RANDOM_BYTES_BASE64
+
+# ── Email delivery (Resend) ──────────────────────────────────────────────────
+RESEND_API_KEY=re_REPLACE_WITH_YOUR_RESEND_KEY
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+
+# ── Slack (platform-level — legacy proxy routes + cost alerts) ───────────────
+SLACK_BOT_TOKEN=xoxb-REPLACE-WITH-YOUR-BOT-TOKEN
+COST_ALERT_SLACK_CHANNEL=
+
+# ── Legacy Claude proxy (/claude route) ──────────────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-REPLACE-WITH-YOUR-KEY
+
+# ── Feature flags ────────────────────────────────────────────────────────────
+ALLOW_OPUS=false
