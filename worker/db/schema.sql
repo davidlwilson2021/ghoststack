@@ -10,6 +10,7 @@ CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,             -- PBKDF2 base64
+  password_salt TEXT,                      -- random hex (NULL = legacy deterministic salt)
   display_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
   status TEXT NOT NULL DEFAULT 'pending'

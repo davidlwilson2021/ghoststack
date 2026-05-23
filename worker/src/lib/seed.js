@@ -1,4 +1,4 @@
-import { hashPassword } from './crypto.js';
+import { hashPassword, generateToken } from './crypto.js';
 
 export async function seedAdmin(db, env) {
   // Both ADMIN_EMAIL and ADMIN_PASSWORD must be set as Worker secrets.
@@ -8,9 +8,10 @@ export async function seedAdmin(db, env) {
   const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(env.ADMIN_EMAIL).first();
   if (existing) return;
 
-  const salt = env.ADMIN_EMAIL + ':ghoststack';
+  // Always seed with a random salt — never the legacy deterministic scheme.
+  const salt = generateToken();
   const hash = await hashPassword(env.ADMIN_PASSWORD, salt);
   await db.prepare(
-    `INSERT INTO users (email, password_hash, display_name, role, status) VALUES (?, ?, ?, 'admin', 'approved')`
-  ).bind(env.ADMIN_EMAIL, hash, 'Admin').run();
+    `INSERT INTO users (email, password_hash, password_salt, display_name, role, status) VALUES (?, ?, ?, 'Admin', 'admin', 'approved')`
+  ).bind(env.ADMIN_EMAIL, hash, salt).run();
 }

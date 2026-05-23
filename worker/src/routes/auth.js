@@ -4,6 +4,17 @@ import { getSession } from '../lib/session.js';
 import { isValidEmail, escapeHtml } from '../lib/validate.js';
 import { logAudit } from '../lib/audit.js';
 
+// Resolves the correct PBKDF2 salt for a user row.
+//
+// New accounts store a cryptographically random salt in password_salt.
+// Legacy accounts (created before migration 0005) have password_salt = NULL
+// and used the deterministic scheme: email + ':ghoststack'.
+// The login path detects the legacy case and upgrades the row on first
+// successful login — transparent to the user, no forced password reset.
+function legacySalt(email) {
+  return email + ':ghoststack';
+}
+
 export async function register(request, env) {
   const { email, password, displayName } = await request.json();
   if (!email || !password || !displayName) return err('Email, password, and display name are required', 400, request);
@@ -14,12 +25,13 @@ export async function register(request, env) {
   const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first();
   if (existing) return err('An account with this email already exists', 400, request);
 
-  const salt = email.toLowerCase() + ':ghoststack';
+  // Always use a fresh random salt for new accounts.
+  const salt = generateToken();
   const hash = await hashPassword(password, salt);
   const safeName = escapeHtml(displayName.trim());
   await env.DB.prepare(
-    `INSERT INTO users (email, password_hash, display_name, role, status) VALUES (?, ?, ?, 'user', 'pending')`
-  ).bind(email.toLowerCase(), hash, safeName).run();
+    `INSERT INTO users (email, password_hash, password_salt, display_name, role, status) VALUES (?, ?, ?, ?, 'user', 'pending')`
+  ).bind(email.toLowerCase(), hash, salt, safeName).run();
 
   await logAudit(env, request, {
     action: 'auth.register',
@@ -42,7 +54,9 @@ export async function login(request, env) {
     return err('Invalid email or password', 401, request);
   }
 
-  const salt = email.toLowerCase() + ':ghoststack';
+  // Use the stored random salt if present; fall back to legacy deterministic
+  // salt for accounts that haven't been upgraded yet.
+  const salt = user.password_salt || legacySalt(user.email);
   const hash = await hashPassword(password, salt);
   if (hash !== user.password_hash) {
     await logAudit(env, request, {
@@ -51,6 +65,16 @@ export async function login(request, env) {
       details: { email: user.email, reason: 'bad_password' },
     });
     return err('Invalid email or password', 401, request);
+  }
+
+  // Silently upgrade legacy accounts to a random salt on first successful
+  // login. The user experiences nothing — their password hasn't changed.
+  if (!user.password_salt) {
+    const newSalt = generateToken();
+    const newHash = await hashPassword(password, newSalt);
+    await env.DB.prepare(
+      "UPDATE users SET password_hash = ?, password_salt = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(newHash, newSalt, user.id).run();
   }
 
   if (user.status !== 'approved') {
@@ -116,14 +140,17 @@ export async function changePassword(request, env) {
   if (!currentPassword || !newPassword) return err('Current and new passwords are required', 400, request);
   if (newPassword.length < 8) return err('New password must be at least 8 characters', 400, request);
 
-  const salt = sess.email + ':ghoststack';
+  const user = await env.DB.prepare('SELECT password_hash, password_salt FROM users WHERE id = ?').bind(sess.user_id).first();
+  const salt = user?.password_salt || legacySalt(sess.email);
   const currentHash = await hashPassword(currentPassword, salt);
-  const user = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(sess.user_id).first();
   if (!user || currentHash !== user.password_hash) return err('Current password is incorrect', 400, request);
 
-  const newHash = await hashPassword(newPassword, salt);
-  await env.DB.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
-    .bind(newHash, sess.user_id).run();
+  // Always write a fresh random salt when the password changes.
+  const newSalt = generateToken();
+  const newHash = await hashPassword(newPassword, newSalt);
+  await env.DB.prepare(
+    "UPDATE users SET password_hash = ?, password_salt = ?, updated_at = datetime('now') WHERE id = ?"
+  ).bind(newHash, newSalt, sess.user_id).run();
 
   await logAudit(env, request, {
     user_id: sess.user_id,
