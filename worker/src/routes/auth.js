@@ -119,7 +119,7 @@ export async function changePassword(request, env) {
   const salt = sess.email + ':ghoststack';
   const currentHash = await hashPassword(currentPassword, salt);
   const user = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(sess.user_id).first();
-  if (currentHash !== user.password_hash) return err('Current password is incorrect', 400, request);
+  if (!user || currentHash !== user.password_hash) return err('Current password is incorrect', 400, request);
 
   const newHash = await hashPassword(newPassword, salt);
   await env.DB.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")

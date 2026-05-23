@@ -26,12 +26,13 @@ export async function approve(request, env) {
 
   const { userId } = await request.json();
   const target = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first();
+  if (!target) return err('User not found', 404, request);
   await env.DB.prepare("UPDATE users SET status = 'approved', updated_at = datetime('now') WHERE id = ?")
     .bind(userId).run();
   await logAudit(env, request, {
     user_id: session.user_id,
     action: 'admin.approve',
-    details: { target_user_id: userId, target_email: target?.email || null },
+    details: { target_user_id: userId, target_email: target.email },
   });
   return json({ ok: true, message: 'User approved' }, 200, request);
 }
@@ -42,6 +43,7 @@ export async function deny(request, env) {
 
   const { userId } = await request.json();
   const target = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first();
+  if (!target) return err('User not found', 404, request);
   await env.DB.prepare("UPDATE users SET status = 'denied', updated_at = datetime('now') WHERE id = ?")
     .bind(userId).run();
   // Kill any active sessions so the deny takes effect immediately.
