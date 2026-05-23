@@ -30,8 +30,11 @@ export function isValidProvider(provider) {
   return Object.prototype.hasOwnProperty.call(PROVIDERS, provider);
 }
 
-export async function generate({ provider, apiKey, model, messages }) {
+export async function generate({ provider, apiKey, model, messages, system, env }) {
   const adapter = PROVIDERS[provider];
   if (!adapter) throw new Error(`Unknown AI provider: ${provider}`);
-  return adapter.generate({ apiKey, model, messages });
+  return adapter.generate({ apiKey, model, messages, system, env });
 }
+
+export { resolveModel, ALLOWED_MODELS } from './anthropic.js';
+export { estimateCostUsd, usageSummary } from './cost.js';

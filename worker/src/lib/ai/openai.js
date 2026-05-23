@@ -37,6 +37,16 @@ export async function generate({ apiKey, model, messages }) {
     const msg = data?.error?.message || `OpenAI API error (HTTP ${res.status})`;
     throw new Error(msg);
   }
+  const resolvedModel = model || DEFAULT_MODEL;
   const text = data?.choices?.[0]?.message?.content || '';
-  return { text, raw: data };
+  // Return the same shape as the Anthropic adapter so callers never get
+  // undefined for model, usage, or estimated_cost_usd.
+  return {
+    text,
+    raw: data,
+    model: resolvedModel,
+    requested_model: model,
+    usage: null,
+    estimated_cost_usd: 0,
+  };
 }

@@ -1,0 +1,21 @@
+# Wrangler local dev secrets — NEVER commit these
+worker/.dev.vars
+.dev.vars
+
+# Wrangler build output
+worker/.wrangler/
+.wrangler/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

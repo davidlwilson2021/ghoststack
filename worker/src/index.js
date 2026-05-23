@@ -15,6 +15,11 @@ import * as tasks from './routes/tasks.js';
 import * as eod from './routes/eod.js';
 import * as proxy from './routes/proxy.js';
 
+// Module-scope flag — survives across requests within the same isolate.
+// Ensures seedAdmin() runs at most once per cold start instead of on
+// every incoming request.
+let adminSeeded = false;
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
@@ -25,7 +30,10 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    await seedAdmin(env.DB, env);
+    if (!adminSeeded) {
+      await seedAdmin(env.DB, env);
+      adminSeeded = true;
+    }
 
     if (path === '/health' && method === 'GET') {
       return json({
@@ -86,5 +94,20 @@ export default {
     if (path === '/claude' && method === 'POST') return proxy.callClaude(request, env);
 
     return err('Not found', 404, request);
+  },
+
+  // Runs on the cron schedule defined in wrangler.toml.
+  // Purges expired sessions so the sessions table doesn't grow unbounded.
+  // Active sessions are unaffected — the WHERE clause only targets rows
+  // whose expires_at is already in the past.
+  async scheduled(_event, env) {
+    try {
+      const result = await env.DB.prepare(
+        "DELETE FROM sessions WHERE expires_at < datetime('now')"
+      ).run();
+      console.log(`session cleanup: removed ${result.meta?.changes ?? 0} expired rows`);
+    } catch (e) {
+      console.error('session cleanup failed:', e?.message);
+    }
   },
 };

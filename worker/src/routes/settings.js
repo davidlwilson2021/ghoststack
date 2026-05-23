@@ -16,7 +16,7 @@ import { json, err } from '../lib/cors.js';
 import { getSession } from '../lib/session.js';
 import { encrypt } from '../lib/crypto.js';
 import { isValidEmail } from '../lib/validate.js';
-import { isValidProvider, getProviderInfo } from '../lib/ai/index.js';
+import { isValidProvider, getProviderInfo, ALLOWED_MODELS } from '../lib/ai/index.js';
 import { logAudit } from '../lib/audit.js';
 
 const SLACK_CHANNEL_RE = /^[A-Z0-9]{1,20}$/;
@@ -99,6 +99,16 @@ export async function updateSettings(request, env) {
     const m = body.ai_model;
     if (typeof m !== 'string' || !MODEL_RE.test(m)) {
       return err('Invalid ai_model', 400, request);
+    }
+    let provider = has('ai_provider') ? body.ai_provider : null;
+    if (!provider) {
+      const current = await env.DB.prepare(
+        'SELECT ai_provider FROM user_settings WHERE user_id = ?'
+      ).bind(session.user_id).first();
+      provider = current?.ai_provider || 'anthropic';
+    }
+    if (provider === 'anthropic' && !ALLOWED_MODELS.has(m) && env.ALLOW_OPUS !== 'true') {
+      return err('Opus and unknown models are disabled. Use Sonnet or Haiku.', 400, request);
     }
     sets.push('ai_model = ?');
     params.push(m);
