@@ -11,5 +11,7 @@ database_name = "ghoststack-auth"
 database_id = "f0986b1a-b903-407d-8040-25a18a1e7baf"
 migrations_dir = "migrations"
 
-[vars]
-CORS_ORIGIN = "https://ghoststack.pages.dev"
+# Purge expired sessions daily at 03:00 UTC.
+# Triggers the `scheduled` handler in src/index.js.
+[triggers]
+crons = ["0 3 * * *"]

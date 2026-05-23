@@ -168,8 +168,12 @@ export async function generateEod(request, env) {
     try { return JSON.parse(settings.email_template); } catch { return null; }
   })() : null;
 
+  // Use the user's configured timezone so the date in the email reflects
+  // their local calendar day, not the Worker's UTC clock.
+  const tz = settings.schedule_timezone || 'UTC';
   const dateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    timeZone: tz,
   });
 
   const { system, user } = buildEodPrompts({
