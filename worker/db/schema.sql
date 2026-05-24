@@ -110,3 +110,14 @@ CREATE TABLE eod_history (
 );
 
 CREATE INDEX idx_eod_user_generated ON eod_history(user_id, generated_at);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- rate_limit_counters: sliding-window counters for brute-force protection
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE rate_limit_counters (
+  key          TEXT    PRIMARY KEY,   -- e.g. "login:1.2.3.4"
+  window_start INTEGER NOT NULL,      -- Unix epoch seconds
+  count        INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX idx_rlc_window ON rate_limit_counters(window_start);

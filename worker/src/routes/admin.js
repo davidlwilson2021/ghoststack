@@ -26,7 +26,9 @@ export async function approve(request, env) {
   const session = await getSession(env.DB, request);
   if (!session || session.role !== 'admin') return err('Admin access required', 403, request);
 
-  const { userId } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { userId } = body ?? {};
   const target = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first();
   if (!target) return err('User not found', 404, request);
   await env.DB.prepare("UPDATE users SET status = 'approved', updated_at = datetime('now') WHERE id = ?")
@@ -43,7 +45,9 @@ export async function deny(request, env) {
   const session = await getSession(env.DB, request);
   if (!session || session.role !== 'admin') return err('Admin access required', 403, request);
 
-  const { userId } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { userId } = body ?? {};
   const target = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first();
   if (!target) return err('User not found', 404, request);
   await env.DB.prepare("UPDATE users SET status = 'denied', updated_at = datetime('now') WHERE id = ?")
@@ -62,7 +66,9 @@ export async function suspend(request, env) {
   const session = await getSession(env.DB, request);
   if (!session || session.role !== 'admin') return err('Admin access required', 403, request);
 
-  const { userId } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { userId } = body ?? {};
   const target = await env.DB.prepare('SELECT email, role FROM users WHERE id = ?').bind(userId).first();
   if (!target) return err('User not found', 404, request);
   if (target.role === 'admin') return err('Cannot suspend admin accounts', 400, request);
@@ -83,9 +89,12 @@ export async function deleteUser(request, env) {
   const session = await getSession(env.DB, request);
   if (!session || session.role !== 'admin') return err('Admin access required', 403, request);
 
-  const { userId } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { userId } = body ?? {};
   const target = await env.DB.prepare('SELECT email, role FROM users WHERE id = ?').bind(userId).first();
-  if (target && target.role === 'admin') return err('Cannot delete admin accounts', 400, request);
+  if (!target) return err('User not found', 404, request);
+  if (target.role === 'admin') return err('Cannot delete admin accounts', 400, request);
   await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run();
   await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
   await logAudit(env, request, {

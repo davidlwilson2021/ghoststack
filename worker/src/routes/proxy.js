@@ -11,6 +11,7 @@ import { logAudit } from '../lib/audit.js';
 
 const MAX_SLACK_TEXT = 40000; // Slack hard limit is 40k chars
 const MAX_HISTORY_LIMIT = 100;
+const MAX_PROXY_INPUT_CHARS = 10_000; // Per-request cap on callClaude to limit platform key spend
 
 // Returns the set of Slack channel IDs the user is allowed to access.
 // Pulls from their saved user_settings so they can only reach channels
@@ -40,8 +41,9 @@ export async function logToSlack(request, env) {
   if (text.length > MAX_SLACK_TEXT) return err('text too long', 400, request);
 
   // Guard: only allow posting to channels the user has configured.
+  // Fail-closed: a user with no channels configured cannot post to any channel.
   const allowed = await allowedChannels(env.DB, session.user_id);
-  if (allowed.size > 0 && !allowed.has(channel)) {
+  if (allowed.size === 0 || !allowed.has(channel)) {
     return err('Channel not in your configured Slack channels', 403, request);
   }
 
@@ -60,13 +62,25 @@ export async function fetchHistory(request, env) {
   let limit = parseInt(url.searchParams.get('limit') || '30', 10);
   if (Number.isNaN(limit) || limit < 1) limit = 30;
   if (limit > MAX_HISTORY_LIMIT) limit = MAX_HISTORY_LIMIT;
-  const oldest = url.searchParams.get('oldest') || '';
+  // G-12: Validate oldest as a proper Slack timestamp (digits, optional decimal point).
+  // Forwarding an arbitrary string to Slack's API is unsafe — it could inject unexpected
+  // query params or trigger undefined behavior on Slack's side.
+  const oldestRaw = url.searchParams.get('oldest') || '';
+  let oldest = '';
+  if (oldestRaw) {
+    const ts = parseFloat(oldestRaw);
+    if (Number.isNaN(ts) || ts <= 0 || !/^\d+(\.\d+)?$/.test(oldestRaw)) {
+      return err('oldest must be a valid Slack timestamp (e.g. 1234567890.000000)', 400, request);
+    }
+    oldest = oldestRaw;
+  }
 
   if (!channel) return err('channel is required', 400, request);
 
   // Guard: only allow reading channels the user has configured.
+  // Fail-closed: a user with no channels configured cannot read any channel.
   const allowed = await allowedChannels(env.DB, session.user_id);
-  if (allowed.size > 0 && !allowed.has(channel)) {
+  if (allowed.size === 0 || !allowed.has(channel)) {
     return err('Channel not in your configured Slack channels', 403, request);
   }
 
@@ -86,6 +100,14 @@ export async function callClaude(request, env) {
   try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return err('messages must be a non-empty array', 400, request);
+  }
+
+  // Guard: prevent any single approved user from exhausting the platform API key.
+  const totalChars = body.messages.reduce((sum, m) => {
+    return sum + (typeof m?.content === 'string' ? m.content.length : 0);
+  }, 0);
+  if (totalChars > MAX_PROXY_INPUT_CHARS) {
+    return err(`Input too large (${totalChars} chars). Max ${MAX_PROXY_INPUT_CHARS} per request.`, 400, request);
   }
 
   let result;

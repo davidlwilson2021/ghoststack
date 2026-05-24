@@ -5,13 +5,14 @@ export async function seedAdmin(db, env) {
   // If either is missing, skip seeding — do not fall back to a hardcoded password.
   if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) return;
 
-  const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(env.ADMIN_EMAIL).first();
-  if (existing) return;
-
-  // Always seed with a random salt — never the legacy deterministic scheme.
+  // G-11: Use INSERT OR IGNORE so concurrent cold-starts across separate Worker
+  // isolates are safe — the second insert is a no-op rather than a duplicate or
+  // error. The module-scope adminSeeded flag in index.js avoids redundant DB
+  // calls within a single isolate's lifetime; this guard handles the cross-isolate
+  // race at the DB level.
   const salt = generateToken();
   const hash = await hashPassword(env.ADMIN_PASSWORD, salt);
   await db.prepare(
-    `INSERT INTO users (email, password_hash, password_salt, display_name, role, status) VALUES (?, ?, ?, 'Admin', 'admin', 'approved')`
+    `INSERT OR IGNORE INTO users (email, password_hash, password_salt, display_name, role, status) VALUES (?, ?, ?, 'Admin', 'admin', 'approved')`
   ).bind(env.ADMIN_EMAIL, hash, salt).run();
 }

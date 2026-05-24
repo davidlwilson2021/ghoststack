@@ -22,8 +22,16 @@ export function getProviderInfo() {
   ];
 }
 
+// Map provider IDs to their default model IDs explicitly — module namespace
+// property access via PROVIDERS[p]?.DEFAULT_MODEL can return undefined in
+// some Worker bundler configurations even when the export exists.
+const PROVIDER_DEFAULT_MODELS = {
+  anthropic: anthropic.DEFAULT_MODEL,
+  openai: openai.DEFAULT_MODEL,
+};
+
 export function defaultModelFor(provider) {
-  return PROVIDERS[provider]?.DEFAULT_MODEL || null;
+  return PROVIDER_DEFAULT_MODELS[provider] || null;
 }
 
 export function isValidProvider(provider) {

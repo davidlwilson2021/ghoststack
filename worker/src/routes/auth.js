@@ -4,6 +4,26 @@ import { getSession } from '../lib/session.js';
 import { isValidEmail, escapeHtml } from '../lib/validate.js';
 import { logAudit } from '../lib/audit.js';
 
+// Timing-safe comparison for password hashes. Signs both values with an
+// ephemeral HMAC key so the comparison happens on fixed-length MACs —
+// prevents attackers from measuring how many bytes match before the
+// first mismatch. (Cloudflare Workers lacks Node's timingSafeEqual.)
+async function hashesEqual(a, b) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.generateKey(
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const [macA, macB] = await Promise.all([
+    crypto.subtle.sign('HMAC', key, enc.encode(a)),
+    crypto.subtle.sign('HMAC', key, enc.encode(b)),
+  ]);
+  const aArr = new Uint8Array(macA);
+  const bArr = new Uint8Array(macB);
+  let diff = 0;
+  for (let i = 0; i < aArr.length; i++) diff |= aArr[i] ^ bArr[i];
+  return diff === 0;
+}
+
 // Resolves the correct PBKDF2 salt for a user row.
 //
 // New accounts store a cryptographically random salt in password_salt.
@@ -16,7 +36,9 @@ function legacySalt(email) {
 }
 
 export async function register(request, env) {
-  const { email, password, displayName } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { email, password, displayName } = body ?? {};
   if (!email || !password || !displayName) return err('Email, password, and display name are required', 400, request);
   if (password.length < 8) return err('Password must be at least 8 characters', 400, request);
   if (!isValidEmail(email)) return err('Invalid email address', 400, request);
@@ -42,7 +64,9 @@ export async function register(request, env) {
 }
 
 export async function login(request, env) {
-  const { email, password } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { email, password } = body ?? {};
   if (!email || !password) return err('Email and password are required', 400, request);
 
   const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email.toLowerCase()).first();
@@ -58,7 +82,7 @@ export async function login(request, env) {
   // salt for accounts that haven't been upgraded yet.
   const salt = user.password_salt || legacySalt(user.email);
   const hash = await hashPassword(password, salt);
-  if (hash !== user.password_hash) {
+  if (!await hashesEqual(hash, user.password_hash)) {
     await logAudit(env, request, {
       user_id: user.id,
       action: 'auth.login.failure',
@@ -136,14 +160,16 @@ export async function logout(request, env) {
 export async function changePassword(request, env) {
   const sess = await getSession(env.DB, request);
   if (!sess) return err('Not authenticated', 401, request);
-  const { currentPassword, newPassword } = await request.json();
+  let body;
+  try { body = await request.json(); } catch { return err('Invalid JSON body', 400, request); }
+  const { currentPassword, newPassword } = body ?? {};
   if (!currentPassword || !newPassword) return err('Current and new passwords are required', 400, request);
   if (newPassword.length < 8) return err('New password must be at least 8 characters', 400, request);
 
   const user = await env.DB.prepare('SELECT password_hash, password_salt FROM users WHERE id = ?').bind(sess.user_id).first();
   const salt = user?.password_salt || legacySalt(sess.email);
   const currentHash = await hashPassword(currentPassword, salt);
-  if (!user || currentHash !== user.password_hash) return err('Current password is incorrect', 400, request);
+  if (!user || !await hashesEqual(currentHash, user.password_hash)) return err('Current password is incorrect', 400, request);
 
   // Always write a fresh random salt when the password changes.
   const newSalt = generateToken();

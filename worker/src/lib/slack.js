@@ -1,17 +1,10 @@
 // Slack helpers — platform bot token posts via chat.postMessage.
 
 import { decrypt } from './crypto.js';
-
-const CATEGORY_LABELS = {
-  tier2: 'OBJ 1 – TIER 2 SYS ADMIN',
-  tech: 'OBJ 2 – TECH REQUIREMENTS',
-  cyber: 'OBJ 3 – CYBER SECURITY GOVERNANCE',
-  training: 'OBJ 4 – PROFESSIONAL/TRAINING',
-  general: 'GENERAL',
-};
+import { SLACK_CATEGORY_LABELS } from './categories.js';
 
 export function formatTaskMirrorText(category, text) {
-  const label = CATEGORY_LABELS[category] || category.toUpperCase();
+  const label = SLACK_CATEGORY_LABELS[category] || category.toUpperCase();
   return `[${label}] ${text}`;
 }
 

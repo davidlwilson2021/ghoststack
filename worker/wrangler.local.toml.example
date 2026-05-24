@@ -1,0 +1,18 @@
+# wrangler.local.toml — local overrides for sensitive identifiers.
+# Copy this to wrangler.local.toml (gitignored) and fill in real values.
+# Never commit the real wrangler.local.toml.
+
+# Your Cloudflare account ID (from dash.cloudflare.com → right sidebar)
+account_id = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ghoststack-auth"
+# Your D1 database ID (from Cloudflare dashboard → D1 → your database)
+database_id = ""
+migrations_dir = "migrations"
+
+[vars]
+# Slack channel IDs (from Slack channel URL or /invite confirmation)
+SLACK_LOG_CHANNEL = ""
+SLACK_DISPATCH_CHANNEL = ""

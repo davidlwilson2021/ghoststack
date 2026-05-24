@@ -12,22 +12,17 @@ import { generate } from '../lib/ai/index.js';
 import { sendEmail } from '../lib/email/resend.js';
 import { isValidEmail } from '../lib/validate.js';
 import { logAudit } from '../lib/audit.js';
+import { EOD_CATEGORY_LABELS } from '../lib/categories.js';
 
 const MAX_RECIPIENTS = 20;
+const MAX_SUBJECT_LEN = 500;
+// Basic ISO 8601 datetime check — same pattern used in tasks.js listTasks.
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
-// Display labels for the original four G6 category keys used by the
-// dashboard. Unknown categories pass through unchanged so users with
-// custom category strings see those exact strings in the email.
-const DEFAULT_CATEGORY_LABELS = {
-  tier2: 'Tier 2 Sys Admin',
-  tech: 'Tech Requirements',
-  cyber: 'Cyber Security Governance',
-  training: 'Professional / Training',
-  general: 'General',
-};
-
+// Display labels live in lib/categories.js — single source of truth shared
+// with the Slack mirror helper. Unknown category keys pass through unchanged.
 function categoryLabel(key) {
-  return DEFAULT_CATEGORY_LABELS[key] || key;
+  return EOD_CATEGORY_LABELS[key] || key;
 }
 
 function interpolate(str, vars) {
@@ -140,11 +135,17 @@ export async function generateEod(request, env) {
   // start-of-today in UTC, which matches what the dashboard sends.
   let body = {};
   try { body = await request.json(); } catch { /* empty body is fine */ }
-  const fromISO = typeof body?.from === 'string' ? body.from : (() => {
+  let fromISO;
+  if (typeof body?.from === 'string') {
+    if (!ISO_DATETIME_RE.test(body.from)) {
+      return err('from must be a UTC ISO 8601 datetime (e.g. 2025-01-15T00:00:00Z)', 400, request);
+    }
+    fromISO = body.from;
+  } else {
     const d = new Date();
     d.setUTCHours(0, 0, 0, 0);
-    return d.toISOString();
-  })();
+    fromISO = d.toISOString();
+  }
 
   const tasksResult = await env.DB.prepare(
     `SELECT category, text, created_at FROM tasks
@@ -169,12 +170,21 @@ export async function generateEod(request, env) {
   })() : null;
 
   // Use the user's configured timezone so the date in the email reflects
-  // their local calendar day, not the Worker's UTC clock.
+  // their local calendar day, not the Worker's UTC clock. Fall back to UTC
+  // if the stored string is invalid (prevents RangeError crashing the handler).
   const tz = settings.schedule_timezone || 'UTC';
-  const dateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    timeZone: tz,
-  });
+  let dateStr;
+  try {
+    dateStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      timeZone: tz,
+    });
+  } catch {
+    dateStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
 
   const { system, user } = buildEodPrompts({
     tasks,
@@ -271,9 +281,10 @@ export async function sendEod(request, env) {
   // Determine subject + body content from the draft itself (preferred)
   // or from explicit fields supplied by the client.
   const extracted = extractSubject(draft);
-  const subject = (typeof body.subject === 'string' && body.subject.trim())
+  const rawSubject = (typeof body.subject === 'string' && body.subject.trim())
     || extracted.subject
     || `Daily Summary - ${session.display_name}`;
+  const subject = rawSubject.slice(0, MAX_SUBJECT_LEN);
   const emailBody = extracted.body || draft;
 
   // Record the attempt as pending up front so a Resend failure still

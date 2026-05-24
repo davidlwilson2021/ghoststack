@@ -8,6 +8,7 @@
 import { corsHeaders, err, json } from './lib/cors.js';
 import { seedAdmin } from './lib/seed.js';
 import { BUILD_ID } from './lib/build.js';
+import { checkRateLimit, clientIp } from './lib/ratelimit.js';
 import * as auth from './routes/auth.js';
 import * as admin from './routes/admin.js';
 import * as settings from './routes/settings.js';
@@ -35,14 +36,11 @@ export default {
       adminSeeded = true;
     }
 
+    // /health — intentionally minimal. Do NOT add env flags or channel IDs
+    // here; they expose infra topology to unauthenticated callers.
+    // Full diagnostic detail is available to admins via /admin/slack-status.
     if (path === '/health' && method === 'GET') {
-      return json({
-        ok: true,
-        build: BUILD_ID,
-        hasSlackToken: !!env.SLACK_BOT_TOKEN,
-        hasMasterKey: !!env.MASTER_KEY,
-        slackLogChannel: env.SLACK_LOG_CHANNEL || null,
-      }, 200, request);
+      return json({ ok: true, build: BUILD_ID }, 200, request);
     }
 
     if (path === '/version' && method === 'GET') {
@@ -54,11 +52,27 @@ export default {
     }
 
     // ── Auth routes ──
-    if (path === '/auth/register' && method === 'POST') return auth.register(request, env);
-    if (path === '/auth/login' && method === 'POST') return auth.login(request, env);
+    // Rate-limit brute-force-prone endpoints: 10 attempts per IP per 5 min.
+    if (path === '/auth/login' && method === 'POST') {
+      if (!await checkRateLimit(env.DB, `login:${clientIp(request)}`)) {
+        return err('Too many login attempts. Try again later.', 429, request);
+      }
+      return auth.login(request, env);
+    }
+    if (path === '/auth/register' && method === 'POST') {
+      if (!await checkRateLimit(env.DB, `register:${clientIp(request)}`)) {
+        return err('Too many registration attempts. Try again later.', 429, request);
+      }
+      return auth.register(request, env);
+    }
+    if (path === '/auth/change-password' && method === 'POST') {
+      if (!await checkRateLimit(env.DB, `chpw:${clientIp(request)}`)) {
+        return err('Too many password change attempts. Try again later.', 429, request);
+      }
+      return auth.changePassword(request, env);
+    }
     if (path === '/auth/session' && method === 'GET') return auth.session(request, env);
     if (path === '/auth/logout' && method === 'POST') return auth.logout(request, env);
-    if (path === '/auth/change-password' && method === 'POST') return auth.changePassword(request, env);
 
     // ── Admin routes ──
     if (path === '/admin/users' && method === 'GET') return admin.listUsers(request, env);
@@ -101,6 +115,7 @@ export default {
   // Active sessions are unaffected — the WHERE clause only targets rows
   // whose expires_at is already in the past.
   async scheduled(_event, env) {
+    // Purge expired sessions.
     try {
       const result = await env.DB.prepare(
         "DELETE FROM sessions WHERE expires_at < datetime('now')"
@@ -108,6 +123,16 @@ export default {
       console.log(`session cleanup: removed ${result.meta?.changes ?? 0} expired rows`);
     } catch (e) {
       console.error('session cleanup failed:', e?.message);
+    }
+    // Purge stale rate-limit counters (windows older than 1 hour).
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - 3600;
+      const rl = await env.DB.prepare(
+        'DELETE FROM rate_limit_counters WHERE window_start < ?'
+      ).bind(cutoff).run();
+      console.log(`rate-limit cleanup: removed ${rl.meta?.changes ?? 0} stale rows`);
+    } catch (e) {
+      console.error('rate-limit cleanup failed:', e?.message);
     }
   },
 };

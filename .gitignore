@@ -1,6 +1,8 @@
-# Wrangler local dev secrets — NEVER commit these
+# Wrangler local dev secrets and infra identifiers — NEVER commit these
 worker/.dev.vars
 .dev.vars
+worker/wrangler.local.toml
+wrangler.local.toml
 
 # Wrangler build output
 worker/.wrangler/
@@ -19,3 +21,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code / AI tool internals
+.claude/
+worker/.tmp-build/
