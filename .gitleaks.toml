@@ -1,0 +1,18 @@
+title = "GhostStack gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known-safe placeholder values in example/template files"
+regexes = [
+    'REPLACE_WITH_DATABASE_ID',
+    'your_secret_here',
+    'CHANGE_ME',
+    'your_cloudflare_account_id_here',
+]
+paths = [
+    'worker/.dev.vars.example',
+    'worker/wrangler.local.toml.example',
+    'worker/db/schema.sql',
+]
